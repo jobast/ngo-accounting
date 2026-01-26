@@ -910,18 +910,39 @@ def nouvelle_ecriture():
         libelles = request.form.getlist('ligne_libelle[]')
         debits = request.form.getlist('debit[]')
         credits = request.form.getlist('credit[]')
+        ventilations = request.form.getlist('ventilation[]')
 
         for i in range(len(comptes_ids)):
             if comptes_ids[i]:
+                # Déterminer le montant de la ligne
+                montant_ligne = float(debits[i]) if debits[i] else float(credits[i]) if credits[i] else 0
+
                 ligne = LigneEcriture(
                     piece_id=piece.id,
                     compte_id=comptes_ids[i],
-                    projet_id=projets_ids[i] if projets_ids[i] else None,
+                    projet_id=projets_ids[i] if i < len(projets_ids) and projets_ids[i] else None,
                     libelle=libelles[i] if i < len(libelles) else '',
                     debit=float(debits[i]) if debits[i] else 0,
                     credit=float(credits[i]) if credits[i] else 0
                 )
                 db.session.add(ligne)
+                db.session.flush()  # Pour obtenir l'ID de la ligne
+
+                # Traiter la ventilation multi-projets si présente
+                if i < len(ventilations) and ventilations[i]:
+                    try:
+                        ventilation_data = json.loads(ventilations[i])
+                        if ventilation_data:
+                            for v in ventilation_data:
+                                imputation = ImputationAnalytique(
+                                    ligne_ecriture_id=ligne.id,
+                                    projet_id=int(v['projet_id']),
+                                    pourcentage=Decimal(str(v['pourcentage'])),
+                                    montant=Decimal(str(montant_ligne * v['pourcentage'] / 100))
+                                )
+                                db.session.add(imputation)
+                    except (json.JSONDecodeError, KeyError):
+                        pass  # Ignorer les données de ventilation invalides
 
         # VALIDATION SYSCOHADA : Vérifier équilibre Débit = Crédit
         if not piece.est_equilibree:
@@ -938,7 +959,8 @@ def nouvelle_ecriture():
                          exercices=exercices,
                          comptes=comptes,
                          projets=projets,
-                         devises=devises)
+                         devises=devises,
+                         today=date.today().strftime('%Y-%m-%d'))
 
 
 @app.route('/comptabilite/ecritures/<int:id>')

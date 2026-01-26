@@ -57,7 +57,7 @@
                             <tr>
                                 <th>Compte</th>
                                 <th>Libellé</th>
-                                <th>Projet</th>
+                                <th>Imputation analytique</th>
                                 <th class="text-end">Débit</th>
                                 <th class="text-end">Crédit</th>
                             </tr>
@@ -70,17 +70,34 @@
                                     {{ ligne.compte.intitule }}
                                 </td>
                                 <td>{{ ligne.libelle or '-' }}</td>
-                                <td>{{ ligne.projet.code if ligne.projet else '-' }}</td>
-                                <td class="text-end">{{ "{:,.0f}".format(ligne.debit) if ligne.debit else '' }}</td>
-                                <td class="text-end">{{ "{:,.0f}".format(ligne.credit) if ligne.credit else '' }}</td>
+                                <td>
+                                    {% if ligne.imputations_analytiques %}
+                                        <!-- Ventilation multi-projets -->
+                                        <div class="small">
+                                            {% for imp in ligne.imputations_analytiques %}
+                                            <div>
+                                                <span class="badge bg-info">{{ imp.projet.code }}</span>
+                                                <span class="text-muted">{{ imp.pourcentage }}%</span>
+                                                <span class="font-monospace">({{ "{:,.0f}".format(imp.montant) }})</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% elif ligne.projet %}
+                                        <span class="badge bg-info">{{ ligne.projet.code }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end font-monospace">{{ "{:,.0f}".format(ligne.debit) if ligne.debit else '' }}</td>
+                                <td class="text-end font-monospace">{{ "{:,.0f}".format(ligne.credit) if ligne.credit else '' }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
                                 <th colspan="3">Totaux</th>
-                                <th class="text-end">{{ "{:,.0f}".format(piece.total_debit) }}</th>
-                                <th class="text-end">{{ "{:,.0f}".format(piece.total_credit) }}</th>
+                                <th class="text-end font-monospace">{{ "{:,.0f}".format(piece.total_debit) }}</th>
+                                <th class="text-end font-monospace">{{ "{:,.0f}".format(piece.total_credit) }}</th>
                             </tr>
                             <tr>
                                 <td colspan="3"></td>

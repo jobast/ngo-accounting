@@ -26,21 +26,32 @@
         justify-content: center;
         border-radius: 10px;
     }
-    .compte-option {
+    .ventilation-row {
+        background-color: #f8f9fa;
+        border-left: 3px solid #4a7c59;
+    }
+    .ventilation-container {
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .btn-ventiler {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+    .ventilation-item {
         display: flex;
-        justify-content: space-between;
+        gap: 5px;
+        margin-bottom: 5px;
         align-items: center;
     }
-    .compte-option .numero {
-        font-family: monospace;
-        background: #f0f0f0;
-        padding: 2px 6px;
-        border-radius: 3px;
-        margin-right: 8px;
+    .ventilation-item select {
+        flex: 2;
     }
-    .compte-option .frequence {
-        font-size: 11px;
-        color: #888;
+    .ventilation-item input {
+        flex: 1;
+        max-width: 80px;
     }
 </style>
 {% endblock %}
@@ -115,11 +126,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="mt-3 text-center">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAssistant('libre')">
-                <i class="bi bi-pencil me-1"></i>Ecriture libre (mode avancé)
-            </button>
         </div>
     </div>
 </div>
@@ -202,32 +208,70 @@
                             <thead>
                                 <tr>
                                     <th style="width: 200px;">Compte *</th>
-                                    <th style="width: 150px;">Projet</th>
+                                    <th style="width: 220px;">Imputation analytique</th>
                                     <th>Libellé</th>
-                                    <th style="width: 120px;">Débit</th>
-                                    <th style="width: 120px;">Crédit</th>
-                                    <th style="width: 50px;"></th>
+                                    <th style="width: 110px;">Débit</th>
+                                    <th style="width: 110px;">Crédit</th>
+                                    <th style="width: 40px;"></th>
                                 </tr>
                             </thead>
                             <tbody id="lignesBody">
-                                <tr class="ligne-ecriture">
+                                <!-- Ligne 1 -->
+                                <tr class="ligne-ecriture" data-ligne-index="0">
                                     <td>
                                         <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
                                             <option value="">-- Compte --</option>
                                             {% for compte in comptes %}
-                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}" data-type="{{ compte.type_compte }}">
-                                                {{ compte.numero }} - {{ compte.intitule[:30] }}
+                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
+                                                {{ compte.numero }} - {{ compte.intitule[:25] }}
                                             </option>
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td>
-                                        <select class="form-select form-select-sm" name="projet_id[]">
-                                            <option value="">--</option>
-                                            {% for projet in projets %}
-                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                            {% endfor %}
-                                        </select>
+                                    <td class="imputation-cell">
+                                        <div class="simple-mode">
+                                            <div class="d-flex gap-1">
+                                                <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
+                                                    <option value="">-- Projet --</option>
+                                                    {% for projet in projets %}
+                                                    <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
+                                                        onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
+                                                    <i class="bi bi-pie-chart"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="ventilation-mode d-none">
+                                            <div class="ventilation-container">
+                                                <div class="ventilation-items">
+                                                    <div class="ventilation-item">
+                                                        <select class="form-select form-select-sm ventilation-projet">
+                                                            <option value="">Projet</option>
+                                                            {% for projet in projets %}
+                                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <input type="number" class="form-control form-control-sm ventilation-pct"
+                                                               placeholder="%" min="0" max="100" step="0.01">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
+                                                            <i class="bi bi-x"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
+                                                        <i class="bi bi-plus"></i> Projet
+                                                    </button>
+                                                    <small class="ventilation-total text-muted">Total: 0%</small>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
+                                                        Simple
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
                                     </td>
                                     <td>
                                         <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
@@ -246,24 +290,62 @@
                                         </button>
                                     </td>
                                 </tr>
-                                <tr class="ligne-ecriture">
+                                <!-- Ligne 2 -->
+                                <tr class="ligne-ecriture" data-ligne-index="1">
                                     <td>
                                         <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
                                             <option value="">-- Compte --</option>
                                             {% for compte in comptes %}
-                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}" data-type="{{ compte.type_compte }}">
-                                                {{ compte.numero }} - {{ compte.intitule[:30] }}
+                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
+                                                {{ compte.numero }} - {{ compte.intitule[:25] }}
                                             </option>
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td>
-                                        <select class="form-select form-select-sm" name="projet_id[]">
-                                            <option value="">--</option>
-                                            {% for projet in projets %}
-                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                            {% endfor %}
-                                        </select>
+                                    <td class="imputation-cell">
+                                        <div class="simple-mode">
+                                            <div class="d-flex gap-1">
+                                                <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
+                                                    <option value="">-- Projet --</option>
+                                                    {% for projet in projets %}
+                                                    <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
+                                                        onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
+                                                    <i class="bi bi-pie-chart"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="ventilation-mode d-none">
+                                            <div class="ventilation-container">
+                                                <div class="ventilation-items">
+                                                    <div class="ventilation-item">
+                                                        <select class="form-select form-select-sm ventilation-projet">
+                                                            <option value="">Projet</option>
+                                                            {% for projet in projets %}
+                                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <input type="number" class="form-control form-control-sm ventilation-pct"
+                                                               placeholder="%" min="0" max="100" step="0.01">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
+                                                            <i class="bi bi-x"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
+                                                        <i class="bi bi-plus"></i> Projet
+                                                    </button>
+                                                    <small class="ventilation-total text-muted">Total: 0%</small>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
+                                                        Simple
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
                                     </td>
                                     <td>
                                         <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
@@ -291,9 +373,9 @@
                                     <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="3" class="text-end">Ecart</td>
+                                    <td colspan="3" class="text-end">Écart</td>
                                     <td colspan="2">
-                                        <span id="ecart" class="badge bg-success">0 - Equilibré</span>
+                                        <span id="ecart" class="badge bg-success">0 - Équilibré</span>
                                     </td>
                                     <td></td>
                                 </tr>
@@ -320,87 +402,134 @@
             </div>
 
             <div class="card mt-3">
-                <div class="card-header">Aide mémoire</div>
+                <div class="card-header">Aide</div>
                 <div class="card-body small">
-                    <p><strong>Règle de base :</strong> Total Débit = Total Crédit</p>
+                    <p><strong>Équilibre :</strong> Débit = Crédit</p>
                     <hr>
-                    <p><strong>Charges (6xx) :</strong> Au débit quand on dépense</p>
-                    <p><strong>Produits (7xx) :</strong> Au crédit quand on encaisse</p>
+                    <p><strong><i class="bi bi-pie-chart"></i> Ventilation :</strong></p>
+                    <p class="text-muted">Cliquez sur l'icône camembert pour répartir une charge sur plusieurs projets (ex: loyer 60% LED + 40% SOR4D)</p>
                     <hr>
-                    <p><strong>Banque/Caisse (5xx) :</strong></p>
-                    <ul class="mb-0">
-                        <li>Débit = entrée d'argent</li>
-                        <li>Crédit = sortie d'argent</li>
-                    </ul>
-                    <hr>
-                    <p><strong>Fournisseurs (40x) :</strong></p>
-                    <ul class="mb-0">
-                        <li>Crédit = on doit au fournisseur</li>
-                        <li>Débit = on paie le fournisseur</li>
-                    </ul>
+                    <p><strong>Charges (6xx)</strong> = Débit</p>
+                    <p><strong>Produits (7xx)</strong> = Crédit</p>
+                    <p><strong>Banque sortie</strong> = Crédit</p>
                 </div>
             </div>
         </div>
     </div>
 </form>
+
+<!-- Template pour nouvelle ligne -->
+<template id="ligneTemplate">
+    <tr class="ligne-ecriture">
+        <td>
+            <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+                <option value="">-- Compte --</option>
+                {% for compte in comptes %}
+                <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
+                    {{ compte.numero }} - {{ compte.intitule[:25] }}
+                </option>
+                {% endfor %}
+            </select>
+        </td>
+        <td class="imputation-cell">
+            <div class="simple-mode">
+                <div class="d-flex gap-1">
+                    <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
+                        <option value="">-- Projet --</option>
+                        {% for projet in projets %}
+                        <option value="{{ projet.id }}">{{ projet.code }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
+                            onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
+                        <i class="bi bi-pie-chart"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="ventilation-mode d-none">
+                <div class="ventilation-container">
+                    <div class="ventilation-items">
+                        <div class="ventilation-item">
+                            <select class="form-select form-select-sm ventilation-projet">
+                                <option value="">Projet</option>
+                                {% for projet in projets %}
+                                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="number" class="form-control form-control-sm ventilation-pct"
+                                   placeholder="%" min="0" max="100" step="0.01">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
+                            <i class="bi bi-plus"></i> Projet
+                        </button>
+                        <small class="ventilation-total text-muted">Total: 0%</small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
+                            Simple
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm debit-input"
+                   name="debit[]" step="0.01" onchange="calculerTotaux()">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm credit-input"
+                   name="credit[]" step="0.01" onchange="calculerTotaux()">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+
+<!-- Template pour ventilation item -->
+<template id="ventilationItemTemplate">
+    <div class="ventilation-item">
+        <select class="form-select form-select-sm ventilation-projet">
+            <option value="">Projet</option>
+            {% for projet in projets %}
+            <option value="{{ projet.id }}">{{ projet.code }}</option>
+            {% endfor %}
+        </select>
+        <input type="number" class="form-control form-control-sm ventilation-pct"
+               placeholder="%" min="0" max="100" step="0.01">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+</template>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 // Configuration des assistants
 const assistants = {
-    fournisseur: {
-        journal: 'AC',
-        libelle: 'Paiement facture ',
-        lignes: [
-            { classe: 6, side: 'debit', label: 'Charge (60-69)' },
-            { classe: 5, side: 'credit', label: 'Banque/Caisse' }
-        ]
-    },
-    bailleur: {
-        journal: 'BQ',
-        libelle: 'Encaissement subvention ',
-        lignes: [
-            { classe: 5, side: 'debit', label: 'Banque' },
-            { classe: 7, side: 'credit', label: 'Produit (74x)' }
-        ]
-    },
-    salaires: {
-        journal: 'SAL',
-        libelle: 'Salaires du mois ',
-        lignes: [
-            { classe: 6, side: 'debit', label: 'Charges personnel (66x)' },
-            { classe: 4, side: 'credit', label: 'Personnel à payer (42x)' }
-        ]
-    },
-    mission: {
-        journal: 'CA',
-        libelle: 'Frais de mission ',
-        lignes: [
-            { classe: 6, side: 'debit', label: 'Déplacements (625)' },
-            { classe: 5, side: 'credit', label: 'Caisse' }
-        ]
-    },
-    libre: {
-        journal: null,
-        libelle: '',
-        lignes: []
-    }
+    fournisseur: { journal: 'AC', libelle: 'Paiement facture ' },
+    bailleur: { journal: 'BQ', libelle: 'Encaissement subvention ' },
+    salaires: { journal: 'SAL', libelle: 'Salaires du mois ' },
+    mission: { journal: 'CA', libelle: 'Frais de mission ' }
 };
 
 function selectAssistant(type) {
-    // Retirer la sélection précédente
     document.querySelectorAll('.assistant-card').forEach(c => c.classList.remove('selected'));
-
-    // Marquer la nouvelle sélection
     if (type !== 'libre') {
         event.currentTarget.classList.add('selected');
     }
-
     const config = assistants[type];
     if (!config) return;
-
-    // Sélectionner le journal approprié
     if (config.journal) {
         const journalSelect = document.getElementById('journal_id');
         for (let option of journalSelect.options) {
@@ -410,24 +539,17 @@ function selectAssistant(type) {
             }
         }
     }
-
-    // Pré-remplir le libellé
     if (config.libelle) {
         document.getElementById('libelle').value = config.libelle;
     }
-
-    // Focus sur le libellé
     document.getElementById('libelle').focus();
 }
 
+// Gestion des lignes
 function ajouterLigne() {
     const tbody = document.getElementById('lignesBody');
-    const ligne = tbody.querySelector('.ligne-ecriture').cloneNode(true);
-
-    // Reset values
-    ligne.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
-    ligne.querySelectorAll('input').forEach(i => i.value = '');
-
+    const template = document.getElementById('ligneTemplate');
+    const ligne = template.content.cloneNode(true);
     tbody.appendChild(ligne);
 }
 
@@ -439,6 +561,77 @@ function supprimerLigne(btn) {
     }
 }
 
+// Gestion de la ventilation
+function activerVentilation(btn) {
+    const cell = btn.closest('.imputation-cell');
+    cell.querySelector('.simple-mode').classList.add('d-none');
+    cell.querySelector('.ventilation-mode').classList.remove('d-none');
+    cell.querySelector('.projet-simple').value = '';
+    cell.querySelector('.projet-simple').removeAttribute('name');
+    updateVentilationTotal(cell);
+}
+
+function desactiverVentilation(btn) {
+    const cell = btn.closest('.imputation-cell');
+    cell.querySelector('.simple-mode').classList.remove('d-none');
+    cell.querySelector('.ventilation-mode').classList.add('d-none');
+    cell.querySelector('.projet-simple').setAttribute('name', 'projet_id[]');
+    cell.querySelector('.ventilation-data').value = '';
+}
+
+function ajouterVentilation(btn) {
+    const container = btn.closest('.ventilation-container');
+    const items = container.querySelector('.ventilation-items');
+    const template = document.getElementById('ventilationItemTemplate');
+    const item = template.content.cloneNode(true);
+    items.appendChild(item);
+
+    // Ajouter les event listeners
+    const newItem = items.lastElementChild;
+    newItem.querySelector('.ventilation-pct').addEventListener('input', function() {
+        updateVentilationTotal(btn.closest('.imputation-cell'));
+    });
+}
+
+function supprimerVentilation(btn) {
+    const cell = btn.closest('.imputation-cell');
+    const items = cell.querySelectorAll('.ventilation-item');
+    if (items.length > 1) {
+        btn.closest('.ventilation-item').remove();
+        updateVentilationTotal(cell);
+    }
+}
+
+function updateVentilationTotal(cell) {
+    const items = cell.querySelectorAll('.ventilation-item');
+    let total = 0;
+    const ventilations = [];
+
+    items.forEach(item => {
+        const projet = item.querySelector('.ventilation-projet').value;
+        const pct = parseFloat(item.querySelector('.ventilation-pct').value) || 0;
+        total += pct;
+        if (projet && pct > 0) {
+            ventilations.push({ projet_id: projet, pourcentage: pct });
+        }
+    });
+
+    const totalSpan = cell.querySelector('.ventilation-total');
+    totalSpan.textContent = `Total: ${total.toFixed(1)}%`;
+    totalSpan.className = total === 100 ? 'text-success' : 'text-danger';
+
+    // Stocker les données de ventilation en JSON
+    cell.querySelector('.ventilation-data').value = JSON.stringify(ventilations);
+}
+
+// Ajouter les event listeners aux ventilations existantes
+document.querySelectorAll('.ventilation-pct').forEach(input => {
+    input.addEventListener('input', function() {
+        updateVentilationTotal(this.closest('.imputation-cell'));
+    });
+});
+
+// Calcul des totaux
 function calculerTotaux() {
     let totalDebit = 0;
     let totalCredit = 0;
@@ -460,7 +653,7 @@ function calculerTotaux() {
 
     if (ecart < 0.01) {
         ecartSpan.className = 'badge bg-success';
-        ecartSpan.textContent = '0 - Equilibré';
+        ecartSpan.textContent = '0 - Équilibré';
         btnSubmit.disabled = false;
     } else {
         ecartSpan.className = 'badge bg-danger';
@@ -491,6 +684,28 @@ document.getElementById('ecritureForm').addEventListener('submit', function(e) {
     if (totalDebit === 0) {
         e.preventDefault();
         alert('L\'écriture ne peut pas être vide');
+        return false;
+    }
+
+    // Vérifier les ventilations
+    let ventilationError = false;
+    document.querySelectorAll('.imputation-cell').forEach(cell => {
+        const ventilationMode = !cell.querySelector('.ventilation-mode').classList.contains('d-none');
+        if (ventilationMode) {
+            const data = cell.querySelector('.ventilation-data').value;
+            if (data) {
+                const ventilations = JSON.parse(data);
+                const total = ventilations.reduce((sum, v) => sum + v.pourcentage, 0);
+                if (Math.abs(total - 100) > 0.01) {
+                    ventilationError = true;
+                }
+            }
+        }
+    });
+
+    if (ventilationError) {
+        e.preventDefault();
+        alert('Les ventilations doivent totaliser 100%');
         return false;
     }
 });
