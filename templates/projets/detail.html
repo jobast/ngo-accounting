@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{{ projet.code }} - {{ projet.nom }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_projets') }}">Projets</a></li>
+            <li class="breadcrumb-item active">{{ projet.code }}</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- En-tête projet -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-1">{{ projet.nom }}</h2>
+                <p class="text-muted mb-2">
+                    <span class="badge bg-primary">{{ projet.code }}</span>
+                    {% if projet.bailleur %}
+                    <span class="badge bg-info">{{ projet.bailleur.nom }}</span>
+                    {% endif %}
+                    {% if projet.statut == 'actif' %}
+                    <span class="badge bg-success">Actif</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ projet.statut }}</span>
+                    {% endif %}
+                </p>
+                {% if projet.description %}
+                <p>{{ projet.description }}</p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="h3 mb-0">{{ "{:,.0f}".format(projet.budget_total) if projet.budget_total else '0' }}</div>
+                <div class="text-muted">{{ projet.devise.code if projet.devise else 'XOF' }} Budget total</div>
+                {% if projet.date_debut %}
+                <small class="text-muted">
+                    {{ projet.date_debut.strftime('%d/%m/%Y') }} - {{ projet.date_fin.strftime('%d/%m/%Y') if projet.date_fin else '?' }}
+                </small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="d-flex justify-content-between mb-4">
+    <div>
+        <a href="{{ url_for('ajouter_ligne_budget', id=projet.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Ajouter ligne budgétaire
+        </a>
+    </div>
+    <div>
+        <a href="{{ url_for('rapport_projet', id=projet.id) }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-bar-graph me-2"></i>Rapport bailleur
+        </a>
+    </div>
+</div>
+
+<!-- Budget détaillé -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list-ul me-2"></i>Budget détaillé par catégorie
+    </div>
+    <div class="card-body">
+        {% if projet.lignes_budget %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Intitulé</th>
+                        <th>Année</th>
+                        <th class="text-end">Qté</th>
+                        <th>Unité</th>
+                        <th class="text-end">P.U.</th>
+                        <th class="text-end">Prévu</th>
+                        <th class="text-end">Réalisé</th>
+                        <th class="text-end">Écart</th>
+                        <th class="text-end">Taux</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(total_prevu=0, total_realise=0, current_cat='') %}
+                    {% for categorie in categories %}
+                        {% set lignes_cat = projet.lignes_budget|selectattr('categorie_id', 'equalto', categorie.id)|list %}
+                        {% if lignes_cat %}
+                            <tr class="table-light">
+                                <td colspan="10"><strong>{{ categorie.nom }}</strong></td>
+                            </tr>
+                            {% for ligne in lignes_cat %}
+                                {% set realise = realisations.get(ligne.id, 0) %}
+                                {% set prevu = ligne.montant_prevu|float if ligne.montant_prevu else 0 %}
+                                {% set ecart = prevu - realise %}
+                                {% set taux = (realise / prevu * 100) if prevu > 0 else 0 %}
+                                {% set ns.total_prevu = ns.total_prevu + prevu %}
+                                {% set ns.total_realise = ns.total_realise + realise %}
+                                <tr>
+                                    <td>{{ ligne.code }}</td>
+                                    <td>{{ ligne.intitule }}</td>
+                                    <td>{{ ligne.annee or '-' }}</td>
+                                    <td class="text-end">{{ ligne.quantite or '-' }}</td>
+                                    <td>{{ ligne.unite or '-' }}</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(ligne.cout_unitaire) if ligne.cout_unitaire else '-' }}</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(prevu) }}</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(realise) }}</td>
+                                    <td class="text-end {% if ecart < 0 %}text-danger{% endif %}">
+                                        {{ "{:,.0f}".format(ecart) }}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="progress" style="height: 20px; min-width: 60px;">
+                                            <div class="progress-bar {% if taux > 100 %}bg-danger{% elif taux > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                                 style="width: {{ [taux, 100]|min }}%">
+                                                {{ "%.0f"|format(taux) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <th colspan="6">TOTAL</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_prevu) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_realise) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_prevu - ns.total_realise) }}</th>
+                        <th class="text-end">
+                            {{ "%.1f"|format(ns.total_realise / ns.total_prevu * 100) if ns.total_prevu > 0 else 0 }}%
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-list-ul fs-1"></i>
+            <p class="mt-3">Aucune ligne budgétaire</p>
+            <a href="{{ url_for('ajouter_ligne_budget', id=projet.id) }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Ajouter une ligne
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

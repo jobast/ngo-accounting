@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if utilisateur else 'Nouvel' }} utilisateur - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_utilisateurs') }}">Utilisateurs</a></li>
+            <li class="breadcrumb-item active">{{ 'Modifier' if utilisateur else 'Nouveau' }}</li>
+        </ol>
+    </nav>
+    <h2>
+        <i class="bi bi-{{ 'pencil' if utilisateur else 'person-plus' }} me-2"></i>
+        {{ 'Modifier l\'utilisateur' if utilisateur else 'Nouvel utilisateur' }}
+    </h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="prenom" class="form-label">Prénom</label>
+                            <input type="text" class="form-control" id="prenom" name="prenom"
+                                   value="{{ utilisateur.prenom if utilisateur else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nom" class="form-label">Nom *</label>
+                            <input type="text" class="form-control" id="nom" name="nom"
+                                   value="{{ utilisateur.nom if utilisateur else '' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{ utilisateur.email if utilisateur else '' }}"
+                               {{ 'readonly' if utilisateur else '' }} required>
+                        {% if utilisateur %}
+                        <small class="text-muted">L'email ne peut pas être modifié</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            Mot de passe {{ '*' if not utilisateur else '' }}
+                        </label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               {{ 'required' if not utilisateur else '' }}
+                               placeholder="{{ 'Laisser vide pour ne pas changer' if utilisateur else 'Minimum 6 caractères' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Rôle *</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="comptable" {{ 'selected' if utilisateur and utilisateur.role == 'comptable' else '' }}>
+                                Comptable
+                            </option>
+                            <option value="directeur" {{ 'selected' if utilisateur and utilisateur.role == 'directeur' else '' }}>
+                                Directeur
+                            </option>
+                            <option value="auditeur" {{ 'selected' if utilisateur and utilisateur.role == 'auditeur' else '' }}>
+                                Auditeur
+                            </option>
+                        </select>
+                    </div>
+
+                    {% if utilisateur %}
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="actif" name="actif"
+                                   {{ 'checked' if utilisateur.actif else '' }}>
+                            <label class="form-check-label" for="actif">Compte actif</label>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>
+                            {{ 'Enregistrer' if utilisateur else 'Créer l\'utilisateur' }}
+                        </button>
+                        <a href="{{ url_for('liste_utilisateurs') }}" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        {% if utilisateur %}
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Informations
+            </div>
+            <div class="card-body">
+                <p><strong>Créé le:</strong><br>
+                   {{ utilisateur.date_creation.strftime('%d/%m/%Y %H:%M') if utilisateur.date_creation else 'N/A' }}</p>
+                <p><strong>Créé par:</strong><br>
+                   {{ utilisateur.created_by or 'Système' }}</p>
+                <p><strong>Dernière connexion:</strong><br>
+                   {{ utilisateur.derniere_connexion.strftime('%d/%m/%Y %H:%M') if utilisateur.derniere_connexion else 'Jamais' }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card {{ 'mt-3' if utilisateur else '' }}">
+            <div class="card-header">
+                <i class="bi bi-shield-check me-2"></i>Sécurité
+            </div>
+            <div class="card-body small">
+                <ul class="mb-0">
+                    <li>Le mot de passe doit contenir au moins 6 caractères</li>
+                    <li>Utilisez un mot de passe unique et sécurisé</li>
+                    <li>Les comptes inactifs ne peuvent pas se connecter</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

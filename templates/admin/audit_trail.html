@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Journal d'audit - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock-history me-2"></i>Journal d'audit</h2>
+    <span class="text-muted">Traçabilité des opérations</span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Date/Heure</th>
+                        <th>Utilisateur</th>
+                        <th>Action</th>
+                        <th>Table</th>
+                        <th>ID</th>
+                        <th>Détails</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs.items %}
+                    <tr>
+                        <td>
+                            <small>{{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                        </td>
+                        <td>
+                            <i class="bi bi-person me-1"></i>{{ log.user or 'Système' }}
+                        </td>
+                        <td>
+                            {% if log.action == 'CREATE' %}
+                                <span class="badge bg-success">Création</span>
+                            {% elif log.action == 'UPDATE' %}
+                                <span class="badge bg-warning text-dark">Modification</span>
+                            {% elif log.action == 'DELETE' %}
+                                <span class="badge bg-danger">Suppression</span>
+                            {% elif log.action == 'LOGIN' %}
+                                <span class="badge bg-info">Connexion</span>
+                            {% elif log.action == 'LOGOUT' %}
+                                <span class="badge bg-secondary">Déconnexion</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ log.action }}</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ log.table_name }}</code></td>
+                        <td>{{ log.record_id or '-' }}</td>
+                        <td>
+                            {% if log.old_values or log.new_values %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#detailModal{{ log.id }}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+
+                            <!-- Modal -->
+                            <div class="modal fade" id="detailModal{{ log.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">
+                                                Détail - {{ log.action }} sur {{ log.table_name }}
+                                            </h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                {% if log.old_values %}
+                                                <div class="col-md-6">
+                                                    <h6>Anciennes valeurs</h6>
+                                                    <pre class="bg-light p-2 rounded small">{{ log.old_values }}</pre>
+                                                </div>
+                                                {% endif %}
+                                                {% if log.new_values %}
+                                                <div class="col-md-6">
+                                                    <h6>Nouvelles valeurs</h6>
+                                                    <pre class="bg-light p-2 rounded small">{{ log.new_values }}</pre>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <hr>
+                                            <small class="text-muted">
+                                                IP: {{ log.ip_address or 'N/A' }} |
+                                                {{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Aucune entrée dans le journal d'audit
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if logs.pages > 1 %}
+        <nav aria-label="Pagination">
+            <ul class="pagination justify-content-center mb-0">
+                {% if logs.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('audit_trail', page=logs.prev_num) }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page in logs.iter_pages() %}
+                    {% if page %}
+                        <li class="page-item {{ 'active' if page == logs.page else '' }}">
+                            <a class="page-link" href="{{ url_for('audit_trail', page=page) }}">{{ page }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if logs.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('audit_trail', page=logs.next_num) }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>À propos du journal d'audit
+    </div>
+    <div class="card-body small">
+        <p class="mb-2">Le journal d'audit enregistre automatiquement toutes les actions importantes effectuées dans le système:</p>
+        <ul class="mb-0">
+            <li><strong>Création</strong>: Ajout d'un nouvel enregistrement</li>
+            <li><strong>Modification</strong>: Changement des valeurs existantes</li>
+            <li><strong>Suppression</strong>: Suppression d'un enregistrement</li>
+            <li><strong>Connexion/Déconnexion</strong>: Accès utilisateur</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

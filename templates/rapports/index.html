@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2><i class="bi bi-file-earmark-bar-graph me-2"></i>Rapports</h2>
+</div>
+
+<div class="row">
+    <!-- Rapports comptables -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-calculator me-2"></i>Rapports Comptables
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('balance_generale') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Balance générale</strong>
+                            <br><small class="text-muted">Soldes de tous les comptes</small>
+                        </div>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    <a href="{{ url_for('etats_financiers') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>États financiers</strong>
+                            <br><small class="text-muted">Bilan et compte de résultat SYSCOHADA</small>
+                        </div>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rapports projets -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-folder me-2"></i>Rapports Projets / Bailleurs
+            </div>
+            <div class="card-body">
+                {% if projets %}
+                <div class="list-group list-group-flush">
+                    {% for projet in projets %}
+                    <a href="{{ url_for('rapport_projet', id=projet.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ projet.code }}</strong> - {{ projet.nom }}
+                            <br>
+                            <small class="text-muted">
+                                {% if projet.bailleur %}{{ projet.bailleur.nom }}{% endif %}
+                                {% if projet.budget_total %} | Budget: {{ "{:,.0f}".format(projet.budget_total) }}{% endif %}
+                            </small>
+                        </div>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Aucun projet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exercices -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-calendar me-2"></i>Exercices comptables
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Année</th>
+                        <th>Période</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ex in exercices %}
+                    <tr>
+                        <td><strong>{{ ex.annee }}</strong></td>
+                        <td>{{ ex.date_debut.strftime('%d/%m/%Y') }} - {{ ex.date_fin.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            {% if ex.cloture %}
+                                <span class="badge bg-secondary">Clôturé</span>
+                            {% else %}
+                                <span class="badge bg-success">Ouvert</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('balance_generale', exercice_id=ex.id) }}" class="btn btn-sm btn-outline-primary">
+                                Balance
+                            </a>
+                            <a href="{{ url_for('etats_financiers', exercice_id=ex.id) }}" class="btn btn-sm btn-outline-secondary">
+                                États financiers
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

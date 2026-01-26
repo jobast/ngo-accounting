@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Projets - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-folder me-2"></i>Projets</h2>
+    <a href="{{ url_for('nouveau_projet') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Nouveau projet
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if projets %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Nom du projet</th>
+                        <th>Bailleur</th>
+                        <th>Budget</th>
+                        <th>Période</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for projet in projets %}
+                    <tr>
+                        <td><strong>{{ projet.code }}</strong></td>
+                        <td>
+                            <a href="{{ url_for('detail_projet', id=projet.id) }}">
+                                {{ projet.nom }}
+                            </a>
+                            {% if projet.description %}
+                            <br><small class="text-muted">{{ projet.description[:50] }}{% if projet.description|length > 50 %}...{% endif %}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if projet.bailleur %}
+                                <span class="badge bg-info">{{ projet.bailleur.code }}</span>
+                                {{ projet.bailleur.nom }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if projet.budget_total %}
+                                {{ "{:,.0f}".format(projet.budget_total) }}
+                                <small class="text-muted">{{ projet.devise.code if projet.devise else 'XOF' }}</small>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if projet.date_debut %}
+                                {{ projet.date_debut.strftime('%d/%m/%Y') }}
+                                <br>
+                                <small class="text-muted">au {{ projet.date_fin.strftime('%d/%m/%Y') if projet.date_fin else '?' }}</small>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if projet.statut == 'actif' %}
+                                <span class="badge bg-success">Actif</span>
+                            {% elif projet.statut == 'cloture' %}
+                                <span class="badge bg-secondary">Clôturé</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ projet.statut }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('detail_projet', id=projet.id) }}" class="btn btn-sm btn-outline-primary" title="Voir détail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('rapport_projet', id=projet.id) }}" class="btn btn-sm btn-outline-success" title="Rapport bailleur">
+                                    <i class="bi bi-file-earmark-bar-graph"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-folder fs-1"></i>
+            <p class="mt-3">Aucun projet enregistré</p>
+            <a href="{{ url_for('nouveau_projet') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Créer un projet
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

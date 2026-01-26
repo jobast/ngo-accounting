@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Balance générale - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-calculator me-2"></i>Balance générale</h2>
+    <div>
+        <form class="d-inline-flex gap-2" method="GET">
+            <select class="form-select form-select-sm" name="exercice_id" onchange="this.form.submit()">
+                <option value="">Tous les exercices</option>
+                {% for ex in exercices %}
+                <option value="{{ ex.id }}" {% if exercice_id|string == ex.id|string %}selected{% endif %}>
+                    {{ ex.annee }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+        <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-2">
+            <i class="bi bi-printer"></i> Imprimer
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if balance %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Compte</th>
+                        <th>Intitulé</th>
+                        <th class="text-end">Mouvement Débit</th>
+                        <th class="text-end">Mouvement Crédit</th>
+                        <th class="text-end">Solde Débit</th>
+                        <th class="text-end">Solde Crédit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(total_mvt_d=0, total_mvt_c=0, total_sol_d=0, total_sol_c=0) %}
+                    {% for ligne in balance %}
+                    {% set ns.total_mvt_d = ns.total_mvt_d + ligne.debit %}
+                    {% set ns.total_mvt_c = ns.total_mvt_c + ligne.credit %}
+                    {% set ns.total_sol_d = ns.total_sol_d + ligne.solde_debit %}
+                    {% set ns.total_sol_c = ns.total_sol_c + ligne.solde_credit %}
+                    <tr>
+                        <td><code>{{ ligne.numero }}</code></td>
+                        <td>{{ ligne.intitule }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(ligne.debit) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(ligne.credit) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(ligne.solde_debit) if ligne.solde_debit else '' }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(ligne.solde_credit) if ligne.solde_credit else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <th colspan="2">TOTAUX</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_mvt_d) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_mvt_c) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_sol_d) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(ns.total_sol_c) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mt-3 text-muted small">
+            <strong>Vérification :</strong>
+            Total Mvt Débit ({{ "{:,.0f}".format(ns.total_mvt_d) }}) =
+            Total Mvt Crédit ({{ "{:,.0f}".format(ns.total_mvt_c) }}) :
+            {% if (ns.total_mvt_d - ns.total_mvt_c)|abs < 1 %}
+                <span class="text-success">OK</span>
+            {% else %}
+                <span class="text-danger">ÉCART {{ "{:,.0f}".format(ns.total_mvt_d - ns.total_mvt_c) }}</span>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-calculator fs-1"></i>
+            <p class="mt-3">Aucune écriture comptable pour cette période</p>
+            <a href="{{ url_for('nouvelle_ecriture') }}" class="btn btn-primary">
+                Créer une écriture
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .sidebar, .btn, form { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .card { box-shadow: none !important; }
+}
+</style>
+{% endblock %}

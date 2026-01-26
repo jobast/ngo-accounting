@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier {{ piece.numero }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_ecritures') }}">Ecritures</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('detail_ecriture', id=piece.id) }}">{{ piece.numero }}</a></li>
+            <li class="breadcrumb-item active">Modifier</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-pencil-square me-2"></i>Modifier l'ecriture {{ piece.numero }}</h2>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Cette ecriture n'est pas encore validee. Vous pouvez la modifier jusqu'a sa validation par un directeur.
+</div>
+
+<form method="POST" id="ecritureForm">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- En-tete de la piece -->
+            <div class="card mb-3">
+                <div class="card-header">Informations generales</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="date_piece" class="form-label">Date *</label>
+                            <input type="date" class="form-control" id="date_piece" name="date_piece"
+                                   value="{{ piece.date_piece.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="journal_id" class="form-label">Journal *</label>
+                            <select class="form-select" id="journal_id" name="journal_id" required>
+                                {% for journal in journaux %}
+                                <option value="{{ journal.id }}" {% if journal.id == piece.journal_id %}selected{% endif %}>
+                                    {{ journal.code }} - {{ journal.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="exercice_id" class="form-label">Exercice *</label>
+                            <select class="form-select" id="exercice_id" name="exercice_id" required>
+                                {% for ex in exercices %}
+                                <option value="{{ ex.id }}" {% if ex.id == piece.exercice_id %}selected{% endif %}>
+                                    {{ ex.annee }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="libelle" class="form-label">Libelle *</label>
+                            <input type="text" class="form-control" id="libelle" name="libelle" required
+                                   value="{{ piece.libelle }}"
+                                   placeholder="Ex: Paiement facture fournisseur X">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="reference" class="form-label">Reference</label>
+                            <input type="text" class="form-control" id="reference" name="reference"
+                                   value="{{ piece.reference or '' }}"
+                                   placeholder="N facture, cheque...">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="devise_id" class="form-label">Devise</label>
+                            <select class="form-select" id="devise_id" name="devise_id">
+                                {% for devise in devises %}
+                                <option value="{{ devise.id }}" {% if piece.devise_id == devise.id %}selected{% endif %}>
+                                    {{ devise.code }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="taux_change" class="form-label">Taux de change</label>
+                            <input type="number" class="form-control" id="taux_change" name="taux_change"
+                                   value="{{ piece.taux_change or 1 }}" step="0.000001">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lignes d'ecriture -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Lignes d'ecriture</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="ajouterLigne()">
+                        <i class="bi bi-plus"></i> Ajouter ligne
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="lignesTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 200px;">Compte *</th>
+                                    <th style="width: 120px;">Projet</th>
+                                    <th style="width: 150px;">Ligne budget</th>
+                                    <th>Libelle</th>
+                                    <th style="width: 120px;">Debit</th>
+                                    <th style="width: 120px;">Credit</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lignesBody">
+                                {% for ligne in piece.lignes %}
+                                <tr class="ligne-ecriture">
+                                    <td>
+                                        <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+                                            <option value="">-- Compte --</option>
+                                            {% for compte in comptes %}
+                                            <option value="{{ compte.id }}" {% if compte.id == ligne.compte_id %}selected{% endif %}>
+                                                {{ compte.numero }} - {{ compte.intitule[:30] }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="projet_id[]">
+                                            <option value="">--</option>
+                                            {% for projet in projets %}
+                                            <option value="{{ projet.id }}" {% if ligne.projet_id == projet.id %}selected{% endif %}>
+                                                {{ projet.code }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="ligne_budget_id[]">
+                                            <option value="">--</option>
+                                            {% for lb in lignes_budget %}
+                                            <option value="{{ lb.id }}" {% if ligne.ligne_budget_id == lb.id %}selected{% endif %}>
+                                                {{ lb.description[:20] }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="ligne_libelle[]"
+                                               value="{{ ligne.libelle or '' }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm debit-input"
+                                               name="debit[]" step="0.01" onchange="calculerTotaux()"
+                                               value="{{ ligne.debit if ligne.debit else '' }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm credit-input"
+                                               name="credit[]" step="0.01" onchange="calculerTotaux()"
+                                               value="{{ ligne.credit if ligne.credit else '' }}">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Totaux</strong></td>
+                                    <td><strong id="totalDebit">0</strong></td>
+                                    <td><strong id="totalCredit">0</strong></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end">Ecart</td>
+                                    <td colspan="2">
+                                        <span id="ecart" class="badge bg-success">0 - Equilibre</span>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="btnSubmit">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer les modifications
+                        </button>
+                        <a href="{{ url_for('detail_ecriture', id=piece.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">Aide memoire</div>
+                <div class="card-body small">
+                    <p><strong>Regle de base :</strong> Total Debit = Total Credit</p>
+                    <hr>
+                    <p><strong>Charges (6xx) :</strong> Au debit quand on depense</p>
+                    <p><strong>Produits (7xx) :</strong> Au credit quand on encaisse</p>
+                    <hr>
+                    <p><strong>Banque/Caisse (5xx) :</strong></p>
+                    <ul class="mb-0">
+                        <li>Debit = entree d'argent</li>
+                        <li>Credit = sortie d'argent</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Template pour nouvelle ligne -->
+<template id="ligneTemplate">
+    <tr class="ligne-ecriture">
+        <td>
+            <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+                <option value="">-- Compte --</option>
+                {% for compte in comptes %}
+                <option value="{{ compte.id }}">
+                    {{ compte.numero }} - {{ compte.intitule[:30] }}
+                </option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <select class="form-select form-select-sm" name="projet_id[]">
+                <option value="">--</option>
+                {% for projet in projets %}
+                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <select class="form-select form-select-sm" name="ligne_budget_id[]">
+                <option value="">--</option>
+                {% for lb in lignes_budget %}
+                <option value="{{ lb.id }}">{{ lb.description[:20] }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm debit-input"
+                   name="debit[]" step="0.01" onchange="calculerTotaux()">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm credit-input"
+                   name="credit[]" step="0.01" onchange="calculerTotaux()">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function ajouterLigne() {
+    const tbody = document.getElementById('lignesBody');
+    const template = document.getElementById('ligneTemplate');
+    const ligne = template.content.cloneNode(true);
+    tbody.appendChild(ligne);
+}
+
+function supprimerLigne(btn) {
+    const tbody = document.getElementById('lignesBody');
+    if (tbody.querySelectorAll('.ligne-ecriture').length > 2) {
+        btn.closest('tr').remove();
+        calculerTotaux();
+    } else {
+        alert('Une ecriture doit avoir au moins 2 lignes.');
+    }
+}
+
+function calculerTotaux() {
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    document.querySelectorAll('.debit-input').forEach(input => {
+        totalDebit += parseFloat(input.value) || 0;
+    });
+
+    document.querySelectorAll('.credit-input').forEach(input => {
+        totalCredit += parseFloat(input.value) || 0;
+    });
+
+    document.getElementById('totalDebit').textContent = totalDebit.toLocaleString('fr-FR');
+    document.getElementById('totalCredit').textContent = totalCredit.toLocaleString('fr-FR');
+
+    const ecart = Math.abs(totalDebit - totalCredit);
+    const ecartSpan = document.getElementById('ecart');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    if (ecart < 0.01) {
+        ecartSpan.className = 'badge bg-success';
+        ecartSpan.textContent = '0 - Equilibre';
+        btnSubmit.disabled = false;
+    } else {
+        ecartSpan.className = 'badge bg-danger';
+        ecartSpan.textContent = ecart.toLocaleString('fr-FR') + ' - Desequilibre';
+        btnSubmit.disabled = true;
+    }
+}
+
+// Validation avant soumission
+document.getElementById('ecritureForm').addEventListener('submit', function(e) {
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    document.querySelectorAll('.debit-input').forEach(input => {
+        totalDebit += parseFloat(input.value) || 0;
+    });
+
+    document.querySelectorAll('.credit-input').forEach(input => {
+        totalCredit += parseFloat(input.value) || 0;
+    });
+
+    if (Math.abs(totalDebit - totalCredit) >= 0.01) {
+        e.preventDefault();
+        alert('L\'ecriture doit etre equilibree (Debit = Credit)');
+        return false;
+    }
+
+    if (totalDebit === 0) {
+        e.preventDefault();
+        alert('L\'ecriture ne peut pas etre vide');
+        return false;
+    }
+});
+
+// Init
+calculerTotaux();
+</script>
+{% endblock %}

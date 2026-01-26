@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvel exercice - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_exercices') }}">Exercices</a></li>
+            <li class="breadcrumb-item active">Nouveau</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-calendar-plus me-2"></i>Nouvel exercice comptable</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="annee" class="form-label">Année *</label>
+                        <input type="number" class="form-control" id="annee" name="annee"
+                               value="{{ now().year + 1 if now is defined else 2026 }}"
+                               min="2000" max="2100" required>
+                        <small class="text-muted">
+                            L'exercice couvrira du 1er janvier au 31 décembre de cette année.
+                        </small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Créer l'exercice
+                        </button>
+                        <a href="{{ url_for('liste_exercices') }}" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Information
+            </div>
+            <div class="card-body small">
+                <p>La création d'un nouvel exercice permet de :</p>
+                <ul>
+                    <li>Saisir des écritures pour la nouvelle année</li>
+                    <li>Séparer les données par période comptable</li>
+                    <li>Générer des rapports annuels</li>
+                </ul>
+                <p class="mb-0 text-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Assurez-vous de clôturer l'exercice précédent avant de commencer à travailler sur le nouveau.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

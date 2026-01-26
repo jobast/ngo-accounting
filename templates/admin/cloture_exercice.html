@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Clôture exercice {{ exercice.annee }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_exercices') }}">Exercices</a></li>
+            <li class="breadcrumb-item active">Clôture {{ exercice.annee }}</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-lock me-2"></i>Clôture de l'exercice {{ exercice.annee }}</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Alerte -->
+        <div class="alert alert-warning">
+            <h5><i class="bi bi-exclamation-triangle me-2"></i>Attention</h5>
+            <p class="mb-0">
+                La clôture d'un exercice est <strong>irréversible</strong>. Une fois clôturé :
+            </p>
+            <ul class="mb-0 mt-2">
+                <li>Aucune écriture ne pourra être ajoutée ou modifiée</li>
+                <li>Les données seront figées pour l'archivage</li>
+                <li>Le résultat de l'exercice sera calculé automatiquement</li>
+            </ul>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-bar-chart me-2"></i>Résumé de l'exercice
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="h4 mb-0">{{ stats.nb_ecritures }}</div>
+                        <small class="text-muted">Écritures</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h4 mb-0 {% if stats.nb_non_validees > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ stats.nb_non_validees }}
+                        </div>
+                        <small class="text-muted">Non validées</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h4 mb-0">{{ "{:,.0f}".format(stats.total_debit) }}</div>
+                        <small class="text-muted">Total Débit</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h4 mb-0">{{ "{:,.0f}".format(stats.total_credit) }}</div>
+                        <small class="text-muted">Total Crédit</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if stats.nb_non_validees > 0 %}
+        <!-- Avertissement écritures non validées -->
+        <div class="alert alert-danger">
+            <h5><i class="bi bi-x-circle me-2"></i>Écritures non validées</h5>
+            <p>
+                Il reste <strong>{{ stats.nb_non_validees }}</strong> écriture(s) non validée(s) pour cet exercice.
+            </p>
+            <p class="mb-0">
+                Vous pouvez soit :
+            </p>
+            <ul class="mb-0">
+                <li><a href="{{ url_for('liste_ecritures') }}?exercice_id={{ exercice.id }}&valide=0">Valider les écritures en attente</a></li>
+                <li>Forcer la clôture (les écritures non validées seront conservées mais ne seront plus modifiables)</li>
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Formulaire de confirmation -->
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-shield-lock me-2"></i>Confirmation de clôture
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% if stats.nb_non_validees > 0 %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="force" name="force" required>
+                            <label class="form-check-label" for="force">
+                                Je confirme vouloir clôturer malgré les {{ stats.nb_non_validees }} écriture(s) non validée(s)
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Pour confirmer, tapez le mot <strong>CLOTURER</strong> ci-dessous :
+                        </label>
+                        <input type="text" class="form-control" id="confirmation"
+                               pattern="CLOTURER" required
+                               placeholder="Tapez CLOTURER">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-lock me-2"></i>Clôturer définitivement
+                        </button>
+                        <a href="{{ url_for('liste_exercices') }}" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Exercice
+            </div>
+            <div class="card-body">
+                <p><strong>Année:</strong> {{ exercice.annee }}</p>
+                <p><strong>Début:</strong> {{ exercice.date_debut.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Fin:</strong> {{ exercice.date_fin.strftime('%d/%m/%Y') }}</p>
+                <p class="mb-0"><strong>Statut:</strong>
+                    <span class="badge bg-success">Ouvert</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-list-check me-2"></i>Checklist pré-clôture
+            </div>
+            <div class="card-body small">
+                <ul class="list-unstyled mb-0">
+                    <li class="{% if stats.nb_non_validees == 0 %}text-success{% else %}text-danger{% endif %}">
+                        <i class="bi bi-{% if stats.nb_non_validees == 0 %}check{% else %}x{% endif %}-circle me-1"></i>
+                        Toutes les écritures validées
+                    </li>
+                    <li class="{% if stats.total_debit == stats.total_credit %}text-success{% else %}text-danger{% endif %}">
+                        <i class="bi bi-{% if stats.total_debit == stats.total_credit %}check{% else %}x{% endif %}-circle me-1"></i>
+                        Balance équilibrée
+                    </li>
+                    <li class="text-muted">
+                        <i class="bi bi-circle me-1"></i>
+                        Rapprochement bancaire effectué
+                    </li>
+                    <li class="text-muted">
+                        <i class="bi bi-circle me-1"></i>
+                        Inventaire des stocks réalisé
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

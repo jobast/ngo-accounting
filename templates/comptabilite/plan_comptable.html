@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Plan comptable SYSCOHADA - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-list-ul me-2"></i>Plan comptable SYSCOHADA</h2>
+</div>
+
+<div class="row">
+    <!-- Classes -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">Classes</div>
+            <div class="list-group list-group-flush">
+                <a href="#classe1" class="list-group-item list-group-item-action">1 - Capitaux propres</a>
+                <a href="#classe2" class="list-group-item list-group-item-action">2 - Immobilisations</a>
+                <a href="#classe3" class="list-group-item list-group-item-action">3 - Stocks</a>
+                <a href="#classe4" class="list-group-item list-group-item-action">4 - Tiers</a>
+                <a href="#classe5" class="list-group-item list-group-item-action">5 - Trésorerie</a>
+                <a href="#classe6" class="list-group-item list-group-item-action">6 - Charges</a>
+                <a href="#classe7" class="list-group-item list-group-item-action">7 - Produits</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comptes -->
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Numéro</th>
+                                <th>Intitulé</th>
+                                <th style="width: 100px;">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set current_class = namespace(value=0) %}
+                            {% for compte in comptes %}
+                                {% if compte.classe != current_class.value %}
+                                    {% set current_class.value = compte.classe %}
+                                    <tr id="classe{{ compte.classe }}" class="table-primary">
+                                        <td colspan="3">
+                                            <strong>
+                                                CLASSE {{ compte.classe }} -
+                                                {% if compte.classe == 1 %}CAPITAUX PROPRES
+                                                {% elif compte.classe == 2 %}IMMOBILISATIONS
+                                                {% elif compte.classe == 3 %}STOCKS
+                                                {% elif compte.classe == 4 %}TIERS
+                                                {% elif compte.classe == 5 %}TRÉSORERIE
+                                                {% elif compte.classe == 6 %}CHARGES
+                                                {% elif compte.classe == 7 %}PRODUITS
+                                                {% endif %}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                                <tr class="{% if compte.numero|length == 2 %}fw-bold{% endif %}">
+                                    <td>
+                                        <code>{{ compte.numero }}</code>
+                                    </td>
+                                    <td style="padding-left: {{ (compte.numero|length - 2) * 20 }}px;">
+                                        {{ compte.intitule }}
+                                    </td>
+                                    <td>
+                                        {% if compte.type_compte == 'actif' %}
+                                            <span class="badge bg-info">Actif</span>
+                                        {% elif compte.type_compte == 'passif' %}
+                                            <span class="badge bg-warning">Passif</span>
+                                        {% elif compte.type_compte == 'charge' %}
+                                            <span class="badge bg-danger">Charge</span>
+                                        {% elif compte.type_compte == 'produit' %}
+                                            <span class="badge bg-success">Produit</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

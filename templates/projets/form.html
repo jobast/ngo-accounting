@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if projet else 'Nouveau' }} projet - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_projets') }}">Projets</a></li>
+            <li class="breadcrumb-item active">{{ 'Modifier' if projet else 'Nouveau' }}</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-folder-plus me-2"></i>{{ 'Modifier le projet' if projet else 'Nouveau projet' }}</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="code" class="form-label">Code projet *</label>
+                            <input type="text" class="form-control" id="code" name="code"
+                                   value="{{ projet.code if projet else '' }}" required
+                                   placeholder="Ex: LED">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="nom" class="form-label">Nom du projet *</label>
+                            <input type="text" class="form-control" id="nom" name="nom"
+                                   value="{{ projet.nom if projet else '' }}" required
+                                   placeholder="Ex: LED Bey Diiwaan">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Description du projet...">{{ projet.description if projet else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bailleur_id" class="form-label">Bailleur principal</label>
+                            <select class="form-select" id="bailleur_id" name="bailleur_id">
+                                <option value="">-- Sélectionner --</option>
+                                {% for bailleur in bailleurs %}
+                                <option value="{{ bailleur.id }}"
+                                        {% if projet and projet.bailleur_id == bailleur.id %}selected{% endif %}>
+                                    {{ bailleur.code }} - {{ bailleur.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="devise_id" class="form-label">Devise du budget</label>
+                            <select class="form-select" id="devise_id" name="devise_id">
+                                <option value="">-- XOF par défaut --</option>
+                                {% for devise in devises %}
+                                <option value="{{ devise.id }}"
+                                        {% if projet and projet.devise_id == devise.id %}selected{% endif %}>
+                                    {{ devise.code }} - {{ devise.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="date_debut" class="form-label">Date début</label>
+                            <input type="date" class="form-control" id="date_debut" name="date_debut"
+                                   value="{{ projet.date_debut.strftime('%Y-%m-%d') if projet and projet.date_debut else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="date_fin" class="form-label">Date fin</label>
+                            <input type="date" class="form-control" id="date_fin" name="date_fin"
+                                   value="{{ projet.date_fin.strftime('%Y-%m-%d') if projet and projet.date_fin else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budget_total" class="form-label">Budget total</label>
+                            <input type="number" class="form-control" id="budget_total" name="budget_total"
+                                   value="{{ projet.budget_total if projet else '' }}"
+                                   placeholder="0" step="0.01">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('liste_projets') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>{{ 'Modifier' if projet else 'Créer' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Aide
+            </div>
+            <div class="card-body">
+                <p><strong>Code projet :</strong> Un identifiant court unique (ex: LED, SOR4D)</p>
+                <p><strong>Bailleur :</strong> Le financeur principal du projet</p>
+                <p><strong>Budget :</strong> Le budget peut être ajusté plus tard avec les lignes budgétaires détaillées</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}États financiers SYSCOHADA - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-spreadsheet me-2"></i>États financiers SYSCOHADA</h2>
+    <div>
+        <form class="d-inline-flex gap-2" method="GET">
+            <select class="form-select form-select-sm" name="exercice_id" onchange="this.form.submit()">
+                {% for ex in exercices %}
+                <option value="{{ ex.id }}" {% if exercice_id|string == ex.id|string %}selected{% endif %}>
+                    Exercice {{ ex.annee }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+        <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-2">
+            <i class="bi bi-printer"></i> Imprimer
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- BILAN -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <strong>BILAN</strong>
+            </div>
+            <div class="card-body">
+                <!-- ACTIF -->
+                <h6 class="border-bottom pb-2">ACTIF</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        {% set ns = namespace(total_actif=0) %}
+                        {% for item in actif %}
+                        {% set ns.total_actif = ns.total_actif + item.solde %}
+                        <tr>
+                            <td><code>{{ item.numero }}</code> {{ item.intitule }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.solde) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th>TOTAL ACTIF</th>
+                            <th class="text-end">{{ "{:,.0f}".format(ns.total_actif) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- PASSIF -->
+                <h6 class="border-bottom pb-2 mt-4">PASSIF</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        {% set ns2 = namespace(total_passif=0) %}
+                        {% for item in passif %}
+                        {% set ns2.total_passif = ns2.total_passif + item.solde %}
+                        <tr>
+                            <td><code>{{ item.numero }}</code> {{ item.intitule }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.solde) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th>TOTAL PASSIF</th>
+                            <th class="text-end">{{ "{:,.0f}".format(ns2.total_passif) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPTE DE RESULTAT -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <strong>COMPTE DE RÉSULTAT</strong>
+            </div>
+            <div class="card-body">
+                <!-- PRODUITS -->
+                <h6 class="border-bottom pb-2">PRODUITS (Classe 7)</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        {% set ns3 = namespace(total_produits=0) %}
+                        {% for item in produits %}
+                        {% set ns3.total_produits = ns3.total_produits + item.solde %}
+                        <tr>
+                            <td><code>{{ item.numero }}</code> {{ item.intitule }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.solde|abs) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th>TOTAL PRODUITS</th>
+                            <th class="text-end">{{ "{:,.0f}".format(ns3.total_produits|abs) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- CHARGES -->
+                <h6 class="border-bottom pb-2 mt-4">CHARGES (Classe 6)</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        {% set ns4 = namespace(total_charges=0) %}
+                        {% for item in charges %}
+                        {% set ns4.total_charges = ns4.total_charges + item.solde %}
+                        <tr>
+                            <td><code>{{ item.numero }}</code> {{ item.intitule }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.solde) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th>TOTAL CHARGES</th>
+                            <th class="text-end">{{ "{:,.0f}".format(ns4.total_charges) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- RESULTAT -->
+                <div class="mt-4 p-3 {% if resultat >= 0 %}bg-success{% else %}bg-danger{% endif %} bg-opacity-10 rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>RÉSULTAT DE L'EXERCICE</strong>
+                        <strong class="fs-4 {% if resultat >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ "{:,.0f}".format(resultat) }} FCFA
+                        </strong>
+                    </div>
+                    <small class="text-muted">
+                        {% if resultat >= 0 %}
+                            Excédent (Bénéfice)
+                        {% else %}
+                            Déficit (Perte)
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Résumé -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>Résumé de l'exercice
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="h4">{{ "{:,.0f}".format(ns.total_actif) }}</div>
+                <div class="text-muted">Total Actif</div>
+            </div>
+            <div class="col-md-3">
+                <div class="h4">{{ "{:,.0f}".format(ns2.total_passif) }}</div>
+                <div class="text-muted">Total Passif</div>
+            </div>
+            <div class="col-md-3">
+                <div class="h4 text-success">{{ "{:,.0f}".format(ns3.total_produits|abs) }}</div>
+                <div class="text-muted">Total Produits</div>
+            </div>
+            <div class="col-md-3">
+                <div class="h4 text-danger">{{ "{:,.0f}".format(ns4.total_charges) }}</div>
+                <div class="text-muted">Total Charges</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 text-muted small text-center">
+    États financiers conformes au SYSCOHADA - CREATES GIE - Sénégal
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .sidebar, .btn, form { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .card { box-shadow: none !important; page-break-inside: avoid; }
+}
+</style>
+{% endblock %}

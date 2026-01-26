@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if bailleur else 'Nouveau' }} bailleur - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_bailleurs') }}">Bailleurs</a></li>
+            <li class="breadcrumb-item active">{{ 'Modifier' if bailleur else 'Nouveau' }}</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-person-plus me-2"></i>{{ 'Modifier le bailleur' if bailleur else 'Nouveau bailleur' }}</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="code" class="form-label">Code *</label>
+                            <input type="text" class="form-control" id="code" name="code"
+                                   value="{{ bailleur.code if bailleur else '' }}" required
+                                   placeholder="Ex: NITIDAE">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="nom" class="form-label">Nom complet *</label>
+                            <input type="text" class="form-control" id="nom" name="nom"
+                                   value="{{ bailleur.nom if bailleur else '' }}" required
+                                   placeholder="Ex: Nitidae France">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="pays" class="form-label">Pays</label>
+                            <input type="text" class="form-control" id="pays" name="pays"
+                                   value="{{ bailleur.pays if bailleur else '' }}"
+                                   placeholder="Ex: France">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="devise_id" class="form-label">Devise principale</label>
+                            <select class="form-select" id="devise_id" name="devise_id">
+                                <option value="">-- XOF par défaut --</option>
+                                {% for devise in devises %}
+                                <option value="{{ devise.id }}"
+                                        {% if bailleur and bailleur.devise_id == devise.id %}selected{% endif %}>
+                                    {{ devise.code }} - {{ devise.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="contact" class="form-label">Contact</label>
+                            <input type="text" class="form-control" id="contact" name="contact"
+                                   value="{{ bailleur.contact if bailleur else '' }}"
+                                   placeholder="Nom du contact">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   value="{{ bailleur.email if bailleur else '' }}"
+                                   placeholder="email@exemple.com">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('liste_bailleurs') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>{{ 'Modifier' if bailleur else 'Créer' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

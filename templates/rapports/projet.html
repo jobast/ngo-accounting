@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Rapport Bailleur - {{ projet.code }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{{ url_for('rapports') }}">Rapports</a></li>
+                <li class="breadcrumb-item active">{{ projet.code }}</li>
+            </ol>
+        </nav>
+        <h2><i class="bi bi-file-earmark-bar-graph me-2"></i>Rapport Bailleur</h2>
+    </div>
+    <div class="btn-group">
+        <a href="{{ url_for('export_projet_pdf', id=projet.id) }}" class="btn btn-outline-danger">
+            <i class="bi bi-file-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ url_for('export_projet_excel', id=projet.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-file-excel me-1"></i>Excel
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-primary">
+            <i class="bi bi-printer me-1"></i>Imprimer
+        </button>
+    </div>
+</div>
+
+<!-- En-tête du rapport -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h4>{{ projet.nom }}</h4>
+                <p class="mb-1"><strong>Code :</strong> {{ projet.code }}</p>
+                <p class="mb-1"><strong>Bailleur :</strong> {{ projet.bailleur.nom if projet.bailleur else 'Non défini' }}</p>
+                <p class="mb-1"><strong>Période :</strong>
+                    {% if projet.date_debut %}
+                        {{ projet.date_debut.strftime('%d/%m/%Y') }} - {{ projet.date_fin.strftime('%d/%m/%Y') if projet.date_fin else 'En cours' }}
+                    {% else %}
+                        Non définie
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="h4 mb-1">{{ "{:,.0f}".format(total_prevu) }} {{ projet.devise.code if projet.devise else 'XOF' }}</div>
+                <div class="text-muted">Budget total prévu</div>
+                <div class="h5 mt-2 mb-1 text-primary">{{ "{:,.0f}".format(total_realise) }} {{ projet.devise.code if projet.devise else 'XOF' }}</div>
+                <div class="text-muted">Total réalisé</div>
+                <div class="mt-2">
+                    <strong>Taux d'exécution :</strong>
+                    <span class="badge {% if total_prevu > 0 and (total_realise/total_prevu*100) > 80 %}bg-warning{% else %}bg-success{% endif %} fs-6">
+                        {{ "%.1f"|format(total_realise/total_prevu*100) if total_prevu > 0 else 0 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tableau Budget vs Réalisé -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-table me-2"></i>Détail Budget vs Réalisé
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th class="text-end">Budget prévu</th>
+                        <th class="text-end">Réalisé</th>
+                        <th class="text-end">Écart</th>
+                        <th class="text-end" style="width: 120px;">Taux exéc.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat_data in rapport %}
+                    <!-- Ligne catégorie -->
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>{{ cat_data.categorie.nom }}</strong></td>
+                        <td class="text-end"><strong>{{ "{:,.0f}".format(cat_data.total_prevu) }}</strong></td>
+                        <td class="text-end"><strong>{{ "{:,.0f}".format(cat_data.total_realise) }}</strong></td>
+                        <td class="text-end {% if cat_data.total_prevu - cat_data.total_realise < 0 %}text-danger{% endif %}">
+                            <strong>{{ "{:,.0f}".format(cat_data.total_prevu - cat_data.total_realise) }}</strong>
+                        </td>
+                        <td class="text-end">
+                            <strong>{{ "%.1f"|format(cat_data.total_realise/cat_data.total_prevu*100) if cat_data.total_prevu > 0 else 0 }}%</strong>
+                        </td>
+                    </tr>
+                    <!-- Lignes détail -->
+                    {% for item in cat_data.lignes %}
+                    <tr>
+                        <td class="ps-3">{{ item.ligne.code }}</td>
+                        <td>{{ item.ligne.intitule }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(item.prevu) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(item.realise) }}</td>
+                        <td class="text-end {% if item.ecart < 0 %}text-danger{% endif %}">
+                            {{ "{:,.0f}".format(item.ecart) }}
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 18px;">
+                                <div class="progress-bar {% if item.taux > 100 %}bg-danger{% elif item.taux > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                     style="width: {{ [item.taux, 100]|min }}%">
+                                    {{ "%.0f"|format(item.taux) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <th colspan="2">TOTAL GÉNÉRAL</th>
+                        <th class="text-end">{{ "{:,.0f}".format(total_prevu) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(total_realise) }}</th>
+                        <th class="text-end">{{ "{:,.0f}".format(total_prevu - total_realise) }}</th>
+                        <th class="text-end">{{ "%.1f"|format(total_realise/total_prevu*100) if total_prevu > 0 else 0 }}%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Graphique résumé -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Résumé par catégorie</div>
+            <div class="card-body">
+                {% for cat_data in rapport %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ cat_data.categorie.nom }}</span>
+                        <span>{{ "%.0f"|format(cat_data.total_realise/cat_data.total_prevu*100) if cat_data.total_prevu > 0 else 0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        {% set taux_cat = (cat_data.total_realise/cat_data.total_prevu*100) if cat_data.total_prevu > 0 else 0 %}
+                        <div class="progress-bar {% if taux_cat > 100 %}bg-danger{% elif taux_cat > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             style="width: {{ [taux_cat, 100]|min }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Solde disponible</div>
+            <div class="card-body text-center">
+                <div class="h2 {% if total_prevu - total_realise < 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ "{:,.0f}".format(total_prevu - total_realise) }}
+                </div>
+                <div class="text-muted">{{ projet.devise.code if projet.devise else 'XOF' }}</div>
+                <p class="mt-3 mb-0">
+                    {% if total_prevu - total_realise < 0 %}
+                        <span class="badge bg-danger">Dépassement de budget</span>
+                    {% elif (total_realise/total_prevu*100) if total_prevu > 0 else 0 > 80 %}
+                        <span class="badge bg-warning">Attention : > 80% consommé</span>
+                    {% else %}
+                        <span class="badge bg-success">Budget sous contrôle</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 text-muted small text-center">
+    Rapport généré le {{ now().strftime('%d/%m/%Y à %H:%M') if now is defined else '' }} - CREATES GIE - Système comptable SYSCOHADA
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .sidebar, .btn, nav.breadcrumb { display: none !important; }
+    .main-content { margin-left: 0 !important; padding: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    .card-header { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
+    .table-dark { background: #333 !important; color: white !important; -webkit-print-color-adjust: exact; }
+    .progress-bar { -webkit-print-color-adjust: exact; }
+}
+</style>
+{% endblock %}

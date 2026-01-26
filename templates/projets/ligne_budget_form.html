@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvelle ligne budgétaire - {{ projet.code }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_projets') }}">Projets</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('detail_projet', id=projet.id) }}">{{ projet.code }}</a></li>
+            <li class="breadcrumb-item active">Nouvelle ligne</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-plus-circle me-2"></i>Nouvelle ligne budgétaire</h2>
+    <p class="text-muted">Projet : {{ projet.nom }}</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" id="budgetForm">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="categorie_id" class="form-label">Catégorie *</label>
+                            <select class="form-select" id="categorie_id" name="categorie_id" required>
+                                <option value="">-- Sélectionner --</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="code" class="form-label">Code ligne *</label>
+                            <input type="text" class="form-control" id="code" name="code" required
+                                   placeholder="Ex: 1.1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="annee" class="form-label">Année</label>
+                            <select class="form-select" id="annee" name="annee">
+                                <option value="">-- Toutes --</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="intitule" class="form-label">Intitulé *</label>
+                        <input type="text" class="form-control" id="intitule" name="intitule" required
+                               placeholder="Ex: Salaire Coordinateur projet">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="quantite" class="form-label">Quantité</label>
+                            <input type="number" class="form-control" id="quantite" name="quantite"
+                                   value="1" step="0.01" onchange="calculerMontant()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="unite" class="form-label">Unité</label>
+                            <input type="text" class="form-control" id="unite" name="unite"
+                                   placeholder="Ex: mois, km, unité">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="cout_unitaire" class="form-label">Coût unitaire</label>
+                            <input type="number" class="form-control" id="cout_unitaire" name="cout_unitaire"
+                                   value="0" step="0.01" onchange="calculerMontant()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="montant_prevu" class="form-label">Montant prévu</label>
+                            <input type="number" class="form-control bg-light" id="montant_prevu" name="montant_prevu"
+                                   value="0" step="0.01" readonly>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('detail_projet', id=projet.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Annuler
+                        </a>
+                        <div>
+                            <button type="submit" name="action" value="save_continue" class="btn btn-outline-primary me-2">
+                                <i class="bi bi-plus me-2"></i>Ajouter et continuer
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Catégories
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    {% for cat in categories %}
+                    <li class="mb-2">
+                        <strong>{{ cat.code }}</strong> - {{ cat.nom }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculerMontant() {
+    const qte = parseFloat(document.getElementById('quantite').value) || 0;
+    const pu = parseFloat(document.getElementById('cout_unitaire').value) || 0;
+    document.getElementById('montant_prevu').value = (qte * pu).toFixed(2);
+}
+</script>
+{% endblock %}

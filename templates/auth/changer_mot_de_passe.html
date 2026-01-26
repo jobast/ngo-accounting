@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Changer mot de passe - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2><i class="bi bi-shield-lock me-2"></i>Changer mon mot de passe</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Mot de passe actuel *</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Nouveau mot de passe *</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password"
+                               required minlength="6" placeholder="Minimum 6 caractères">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="confirm_password" class="form-label">Confirmer le nouveau mot de passe *</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                               required minlength="6">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Changer le mot de passe
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Conseils de sécurité
+            </div>
+            <div class="card-body small">
+                <ul>
+                    <li>Utilisez au moins 6 caractères</li>
+                    <li>Combinez lettres majuscules, minuscules et chiffres</li>
+                    <li>Évitez les mots du dictionnaire ou informations personnelles</li>
+                    <li>N'utilisez pas le même mot de passe sur plusieurs sites</li>
+                    <li>Changez votre mot de passe régulièrement</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-person me-2"></i>Mon compte
+            </div>
+            <div class="card-body">
+                <p><strong>Email:</strong> {{ current_user.email }}</p>
+                <p><strong>Nom:</strong> {{ current_user.prenom or '' }} {{ current_user.nom }}</p>
+                <p class="mb-0"><strong>Rôle:</strong>
+                    {% if current_user.role == 'directeur' %}
+                        <span class="badge bg-danger">Directeur</span>
+                    {% elif current_user.role == 'comptable' %}
+                        <span class="badge bg-primary">Comptable</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Auditeur</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
