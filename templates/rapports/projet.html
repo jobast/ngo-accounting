@@ -157,9 +157,10 @@
                 </div>
                 <div class="text-muted">{{ projet.devise.code if projet.devise else 'XOF' }}</div>
                 <p class="mt-3 mb-0">
+                    {% set pct_consomme = (total_realise / total_prevu * 100) if total_prevu > 0 else 0 %}
                     {% if total_prevu - total_realise < 0 %}
                         <span class="badge bg-danger">Dépassement de budget</span>
-                    {% elif (total_realise/total_prevu*100) if total_prevu > 0 else 0 > 80 %}
+                    {% elif pct_consomme > 80 %}
                         <span class="badge bg-warning">Attention : > 80% consommé</span>
                     {% else %}
                         <span class="badge bg-success">Budget sous contrôle</span>
