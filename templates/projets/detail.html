@@ -62,22 +62,56 @@
 
 <!-- Budget détaillé -->
 <div class="card">
-    <div class="card-header">
-        <i class="bi bi-list-ul me-2"></i>Budget détaillé par catégorie
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-2"></i>Budget détaillé par catégorie</span>
+
+        <!-- Filtre par année -->
+        {% if annees_disponibles and annees_disponibles|length > 1 %}
+        <div class="btn-group" role="group" aria-label="Filtre par année">
+            <a href="{{ url_for('detail_projet', id=projet.id) }}"
+               class="btn btn-sm {% if not annee_filtre %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Toutes
+            </a>
+            {% for annee in annees_disponibles %}
+            <a href="{{ url_for('detail_projet', id=projet.id, annee=annee) }}"
+               class="btn btn-sm {% if annee_filtre == annee %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                {{ annee }}
+                {% if totaux_annuels.get(annee, 0) > 0 %}
+                <span class="badge bg-light text-dark ms-1">{{ "{:,.0f}".format(totaux_annuels.get(annee, 0)/1000000) }}M</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     <div class="card-body">
+        {% if annee_filtre %}
+        <div class="alert alert-info mb-3">
+            <i class="bi bi-funnel me-2"></i>
+            Affichage filtré pour l'année <strong>{{ annee_filtre }}</strong>
+            <a href="{{ url_for('detail_projet', id=projet.id) }}" class="alert-link ms-2">
+                <i class="bi bi-x-circle"></i> Effacer le filtre
+            </a>
+        </div>
+        {% endif %}
+
         {% if projet.lignes_budget %}
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>Code</th>
                         <th>Intitulé</th>
-                        <th>Année</th>
+                        <th class="text-center">
+                            <i class="bi bi-calendar3" title="Répartition annuelle"></i>
+                        </th>
                         <th class="text-end">Qté</th>
                         <th>Unité</th>
                         <th class="text-end">P.U.</th>
-                        <th class="text-end">Prévu</th>
+                        <th class="text-end">
+                            Prévu
+                            {% if annee_filtre %}<br><small class="text-muted">({{ annee_filtre }})</small>{% endif %}
+                        </th>
                         <th class="text-end">Réalisé</th>
                         <th class="text-end">Écart</th>
                         <th class="text-end">Taux</th>
@@ -93,15 +127,45 @@
                             </tr>
                             {% for ligne in lignes_cat %}
                                 {% set realise = realisations.get(ligne.id, 0) %}
-                                {% set prevu = ligne.montant_prevu|float if ligne.montant_prevu else 0 %}
+
+                                {# Calcul du prévu selon le filtre année #}
+                                {% if annee_filtre and budgets_par_annee.get(ligne.id, {}).get(annee_filtre) %}
+                                    {% set prevu = budgets_par_annee.get(ligne.id, {}).get(annee_filtre, 0) %}
+                                {% else %}
+                                    {% set prevu = ligne.montant_prevu|float if ligne.montant_prevu else 0 %}
+                                {% endif %}
+
                                 {% set ecart = prevu - realise %}
                                 {% set taux = (realise / prevu * 100) if prevu > 0 else 0 %}
                                 {% set ns.total_prevu = ns.total_prevu + prevu %}
                                 {% set ns.total_realise = ns.total_realise + realise %}
+
+                                {# Vérifier si la ligne a des budgets annuels #}
+                                {% set has_annual_budget = budgets_par_annee.get(ligne.id, {})|length > 0 %}
+
                                 <tr>
                                     <td>{{ ligne.code }}</td>
                                     <td>{{ ligne.intitule }}</td>
-                                    <td>{{ ligne.annee or '-' }}</td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('gerer_budget_annuel', projet_id=projet.id, ligne_id=ligne.id) }}"
+                                           class="btn btn-sm {% if has_annual_budget %}btn-outline-success{% else %}btn-outline-secondary{% endif %}"
+                                           title="Gérer la répartition annuelle">
+                                            {% if has_annual_budget %}
+                                            <i class="bi bi-calendar-check"></i>
+                                            {% else %}
+                                            <i class="bi bi-calendar-plus"></i>
+                                            {% endif %}
+                                        </a>
+                                        {% if has_annual_budget %}
+                                        <br>
+                                        <small class="text-muted">
+                                            {% for annee, montant in budgets_par_annee.get(ligne.id, {}).items() %}
+                                            {{ annee }}: {{ "{:,.0f}".format(montant/1000) }}k
+                                            {% if not loop.last %}<br>{% endif %}
+                                            {% endfor %}
+                                        </small>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-end">{{ ligne.quantite or '-' }}</td>
                                     <td>{{ ligne.unite or '-' }}</td>
                                     <td class="text-end">{{ "{:,.0f}".format(ligne.cout_unitaire) if ligne.cout_unitaire else '-' }}</td>
@@ -111,9 +175,10 @@
                                         {{ "{:,.0f}".format(ecart) }}
                                     </td>
                                     <td class="text-end">
+                                        {% set taux_display = [taux, 100]|min %}
                                         <div class="progress" style="height: 20px; min-width: 60px;">
                                             <div class="progress-bar {% if taux > 100 %}bg-danger{% elif taux > 80 %}bg-warning{% else %}bg-success{% endif %}"
-                                                 style="width: {{ [taux, 100]|min }}%">
+                                                 style="width: {{ taux_display }}%">
                                                 {{ "%.0f"|format(taux) }}%
                                             </div>
                                         </div>
@@ -125,7 +190,10 @@
                 </tbody>
                 <tfoot class="table-dark">
                     <tr>
-                        <th colspan="6">TOTAL</th>
+                        <th colspan="6">
+                            TOTAL
+                            {% if annee_filtre %}({{ annee_filtre }}){% endif %}
+                        </th>
                         <th class="text-end">{{ "{:,.0f}".format(ns.total_prevu) }}</th>
                         <th class="text-end">{{ "{:,.0f}".format(ns.total_realise) }}</th>
                         <th class="text-end">{{ "{:,.0f}".format(ns.total_prevu - ns.total_realise) }}</th>
@@ -136,6 +204,32 @@
                 </tfoot>
             </table>
         </div>
+
+        {% if annees_disponibles and annees_disponibles|length > 1 and not annee_filtre %}
+        <!-- Résumé par année -->
+        <div class="mt-4">
+            <h6><i class="bi bi-bar-chart me-2"></i>Budget par année</h6>
+            <div class="row">
+                {% for annee in annees_disponibles %}
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card {% if totaux_annuels.get(annee, 0) > 0 %}border-primary{% endif %}">
+                        <div class="card-body text-center py-2">
+                            <div class="h5 mb-0">{{ annee }}</div>
+                            <div class="{% if totaux_annuels.get(annee, 0) > 0 %}text-primary{% else %}text-muted{% endif %}">
+                                {{ "{:,.0f}".format(totaux_annuels.get(annee, 0)) }} FCFA
+                            </div>
+                            <a href="{{ url_for('detail_projet', id=projet.id, annee=annee) }}"
+                               class="btn btn-sm btn-outline-primary mt-2">
+                                Voir détail
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% else %}
         <div class="text-center py-5 text-muted">
             <i class="bi bi-list-ul fs-1"></i>

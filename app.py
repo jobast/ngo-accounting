@@ -293,9 +293,45 @@ class LigneBudget(db.Model):
     # Relations
     projet = db.relationship('Projet', back_populates='lignes_budget')
     categorie = db.relationship('CategorieBudget')
+    budgets_annuels = db.relationship('BudgetAnnee', back_populates='ligne_budget', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<LigneBudget {self.code} - {self.intitule}>'
+
+    def get_montant_annee(self, annee):
+        """Retourne le montant prévu pour une année donnée"""
+        for ba in self.budgets_annuels:
+            if ba.annee == annee:
+                return ba.montant_prevu
+        return Decimal('0')
+
+    def get_total_prevu(self):
+        """Retourne le total prévu (somme des années ou montant_prevu si pas de détail annuel)"""
+        if self.budgets_annuels:
+            return sum(ba.montant_prevu or 0 for ba in self.budgets_annuels)
+        return self.montant_prevu or Decimal('0')
+
+
+class BudgetAnnee(db.Model):
+    """Budget par année / Annual Budget Breakdown"""
+    __tablename__ = 'budgets_annee'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ligne_budget_id = db.Column(db.Integer, db.ForeignKey('lignes_budget.id'), nullable=False)
+    annee = db.Column(db.Integer, nullable=False)
+    montant_prevu = db.Column(db.Numeric(15, 2), default=0)
+    commentaire = db.Column(db.String(255))
+
+    # Relations
+    ligne_budget = db.relationship('LigneBudget', back_populates='budgets_annuels')
+
+    # Contrainte unique: une seule entrée par ligne/année
+    __table_args__ = (
+        db.UniqueConstraint('ligne_budget_id', 'annee', name='uq_ligne_annee'),
+    )
+
+    def __repr__(self):
+        return f'<BudgetAnnee {self.ligne_budget_id} - {self.annee}: {self.montant_prevu}>'
 
 
 class Journal(db.Model):
@@ -1260,22 +1296,59 @@ def detail_projet(id):
     projet = Projet.query.get_or_404(id)
     categories = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
 
+    # Déterminer les années du projet
+    annee_debut = projet.date_debut.year if projet.date_debut else datetime.now().year
+    annee_fin = projet.date_fin.year if projet.date_fin else annee_debut + 2
+    annees_disponibles = list(range(annee_debut, annee_fin + 1))
+
+    # Filtrer par année si spécifié
+    annee_filtre = request.args.get('annee', type=int)
+
     # Calcul des réalisés par ligne budgétaire
     # SYSCOHADA: Pour les charges (classe 6), seuls les débits comptent comme dépenses réalisées
     realisations = {}
+    budgets_par_annee = {}
+
     for ligne in projet.lignes_budget:
-        realise = db.session.query(
+        # Requête de base pour le réalisé
+        query = db.session.query(
             db.func.sum(LigneEcriture.debit)
-        ).join(CompteComptable).filter(
+        ).join(CompteComptable).join(PieceComptable).filter(
             (LigneEcriture.ligne_budget_id == ligne.id) &
             (CompteComptable.classe == 6)
-        ).scalar() or 0
+        )
+
+        # Filtrer par année si nécessaire
+        if annee_filtre:
+            query = query.filter(
+                db.extract('year', PieceComptable.date_piece) == annee_filtre
+            )
+
+        realise = query.scalar() or 0
         realisations[ligne.id] = float(realise)
+
+        # Budget par année pour cette ligne
+        budgets_par_annee[ligne.id] = {
+            ba.annee: float(ba.montant_prevu) for ba in ligne.budgets_annuels
+        }
+
+    # Calculer les totaux par année
+    totaux_annuels = {}
+    for annee in annees_disponibles:
+        total_prevu = sum(
+            budgets_par_annee.get(ligne.id, {}).get(annee, 0)
+            for ligne in projet.lignes_budget
+        )
+        totaux_annuels[annee] = total_prevu
 
     return render_template('projets/detail.html',
                          projet=projet,
                          categories=categories,
-                         realisations=realisations)
+                         realisations=realisations,
+                         annees_disponibles=annees_disponibles,
+                         annee_filtre=annee_filtre,
+                         budgets_par_annee=budgets_par_annee,
+                         totaux_annuels=totaux_annuels)
 
 
 @app.route('/projets/<int:id>/budget/ajouter', methods=['GET', 'POST'])
@@ -1305,6 +1378,102 @@ def ajouter_ligne_budget(id):
         return redirect(url_for('detail_projet', id=id))
 
     return render_template('projets/ligne_budget_form.html', projet=projet, categories=categories)
+
+
+@app.route('/projets/<int:projet_id>/budget/<int:ligne_id>/annees', methods=['GET', 'POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def gerer_budget_annuel(projet_id, ligne_id):
+    """Gérer la répartition annuelle d'une ligne budgétaire"""
+    projet = Projet.query.get_or_404(projet_id)
+    ligne = LigneBudget.query.get_or_404(ligne_id)
+
+    if ligne.projet_id != projet.id:
+        flash('Ligne budgétaire invalide', 'danger')
+        return redirect(url_for('detail_projet', id=projet_id))
+
+    # Déterminer les années du projet
+    annee_debut = projet.date_debut.year if projet.date_debut else datetime.now().year
+    annee_fin = projet.date_fin.year if projet.date_fin else annee_debut + 2
+    annees = list(range(annee_debut, annee_fin + 1))
+
+    if request.method == 'POST':
+        # Supprimer les anciennes entrées
+        BudgetAnnee.query.filter_by(ligne_budget_id=ligne.id).delete()
+
+        # Ajouter les nouvelles entrées
+        total = Decimal('0')
+        for annee in annees:
+            montant = request.form.get(f'montant_{annee}', '0')
+            try:
+                montant = Decimal(montant) if montant else Decimal('0')
+            except:
+                montant = Decimal('0')
+
+            if montant > 0:
+                ba = BudgetAnnee(
+                    ligne_budget_id=ligne.id,
+                    annee=annee,
+                    montant_prevu=montant
+                )
+                db.session.add(ba)
+                total += montant
+
+        # Mettre à jour le total de la ligne
+        ligne.montant_prevu = total
+        db.session.commit()
+
+        flash('Répartition annuelle enregistrée', 'success')
+        return redirect(url_for('detail_projet', id=projet_id))
+
+    # Charger les budgets existants
+    budgets_existants = {ba.annee: ba.montant_prevu for ba in ligne.budgets_annuels}
+
+    return render_template('projets/budget_annuel.html',
+                         projet=projet,
+                         ligne=ligne,
+                         annees=annees,
+                         budgets=budgets_existants)
+
+
+@app.route('/api/projets/<int:projet_id>/budget-annuel')
+@login_required
+def api_budget_annuel(projet_id):
+    """API pour obtenir le budget par année d'un projet"""
+    projet = Projet.query.get_or_404(projet_id)
+    annee = request.args.get('annee', type=int)
+
+    # Déterminer les années disponibles
+    annee_debut = projet.date_debut.year if projet.date_debut else datetime.now().year
+    annee_fin = projet.date_fin.year if projet.date_fin else annee_debut + 2
+    annees_disponibles = list(range(annee_debut, annee_fin + 1))
+
+    result = {
+        'projet_id': projet.id,
+        'annees_disponibles': annees_disponibles,
+        'lignes': []
+    }
+
+    for ligne in projet.lignes_budget:
+        ligne_data = {
+            'id': ligne.id,
+            'code': ligne.code,
+            'intitule': ligne.intitule,
+            'categorie': ligne.categorie.nom if ligne.categorie else None,
+            'total_prevu': float(ligne.get_total_prevu()),
+            'budgets_annuels': {}
+        }
+
+        for ba in ligne.budgets_annuels:
+            ligne_data['budgets_annuels'][ba.annee] = float(ba.montant_prevu)
+
+        # Si filtre par année
+        if annee:
+            ligne_data['montant_annee'] = float(ligne.get_montant_annee(annee))
+
+        result['lignes'].append(ligne_data)
+
+    return jsonify(result)
 
 
 # =============================================================================

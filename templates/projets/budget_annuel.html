@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Budget annuel - {{ ligne.code }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_projets') }}">Projets</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('detail_projet', id=projet.id) }}">{{ projet.code }}</a></li>
+            <li class="breadcrumb-item active">Budget annuel</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-calendar3 me-2"></i>Répartition annuelle du budget</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>{{ ligne.code }} - {{ ligne.intitule }}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Répartissez le budget de cette ligne sur les années du projet.
+                        Le total sera automatiquement mis à jour.
+                    </div>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Année</th>
+                                <th class="text-end">Montant prévu (FCFA)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for annee in annees %}
+                            <tr>
+                                <td>
+                                    <strong>{{ annee }}</strong>
+                                    {% if loop.first %}
+                                    <span class="badge bg-secondary ms-2">Début</span>
+                                    {% elif loop.last %}
+                                    <span class="badge bg-secondary ms-2">Fin</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control text-end montant-annuel"
+                                           name="montant_{{ annee }}"
+                                           value="{{ budgets.get(annee, 0)|int }}"
+                                           min="0" step="1"
+                                           oninput="calculerTotal()">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-primary">
+                                <th>TOTAL</th>
+                                <th class="text-end">
+                                    <span id="totalBudget">0</span> FCFA
+                                </th>
+                            </tr>
+                            <tr class="table-light">
+                                <td>Montant actuel de la ligne</td>
+                                <td class="text-end">
+                                    <span class="text-muted">{{ "{:,.0f}".format(ligne.montant_prevu|default(0)) }} FCFA</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('detail_projet', id=projet.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Informations
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Projet</dt>
+                    <dd>{{ projet.nom }}</dd>
+
+                    <dt>Période du projet</dt>
+                    <dd>
+                        {% if projet.date_debut %}
+                        {{ projet.date_debut.strftime('%d/%m/%Y') }} -
+                        {{ projet.date_fin.strftime('%d/%m/%Y') if projet.date_fin else 'En cours' }}
+                        {% else %}
+                        Non définie
+                        {% endif %}
+                    </dd>
+
+                    <dt>Catégorie</dt>
+                    <dd>{{ ligne.categorie.nom if ligne.categorie else 'Non catégorisé' }}</dd>
+
+                    <dt>Unité</dt>
+                    <dd>{{ ligne.unite or '-' }}</dd>
+
+                    <dt>Quantité</dt>
+                    <dd>{{ ligne.quantite or '-' }}</dd>
+
+                    <dt>Coût unitaire</dt>
+                    <dd>{{ "{:,.0f}".format(ligne.cout_unitaire|default(0)) }} FCFA</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-lightbulb me-2"></i>Conseil
+            </div>
+            <div class="card-body">
+                <small class="text-muted">
+                    La répartition annuelle permet de suivre le budget par exercice
+                    et de générer des rapports bailleurs par année.
+                    Les montants saisis ici seront utilisés dans les filtres par année
+                    du tableau de bord projet.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculerTotal() {
+    let total = 0;
+    document.querySelectorAll('.montant-annuel').forEach(input => {
+        total += parseFloat(input.value) || 0;
+    });
+    document.getElementById('totalBudget').textContent = total.toLocaleString('fr-FR');
+}
+
+// Calculer au chargement
+calculerTotal();
+</script>
+{% endblock %}
