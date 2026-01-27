@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Revenus - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up me-2"></i>Tableau de bord Revenus</h2>
+    <a href="{{ url_for('nouveau_financement') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Nouveau financement
+    </a>
+</div>
+
+<!-- Statistiques globales -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-title mb-1 opacity-75">Total engagements</h6>
+                        <h3 class="mb-0">{{ "{:,.0f}".format(stats.montant_total).replace(",", " ") }}</h3>
+                        <small class="opacity-75">{{ stats.nb_financements }} financement(s)</small>
+                    </div>
+                    <i class="bi bi-wallet2 fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-title mb-1 opacity-75">Montant recu</h6>
+                        <h3 class="mb-0">{{ "{:,.0f}".format(stats.montant_recu).replace(",", " ") }}</h3>
+                        <small class="opacity-75">{{ stats.pourcentage_recu }}% du total</small>
+                    </div>
+                    <i class="bi bi-check-circle fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-title mb-1">Montant attendu</h6>
+                        <h3 class="mb-0">{{ "{:,.0f}".format(stats.montant_attendu).replace(",", " ") }}</h3>
+                        <small>A recevoir</small>
+                    </div>
+                    <i class="bi bi-hourglass-split fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {{ 'bg-danger' if tranches_retard else 'bg-info' }} text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-title mb-1 opacity-75">Tranches en retard</h6>
+                        <h3 class="mb-0">{{ tranches_retard|length }}</h3>
+                        <small class="opacity-75">
+                            {% if tranches_retard %}
+                            A relancer
+                            {% else %}
+                            Aucune
+                            {% endif %}
+                        </small>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Repartition par type -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Repartition par type d'affectation</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">Libre (fonctionnement)</h6>
+                            <h3 class="text-secondary">{{ "{:,.0f}".format(par_type.libre.montant).replace(",", " ") }}</h3>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-secondary" style="width: {{ (par_type.libre.recu / par_type.libre.montant * 100) if par_type.libre.montant > 0 else 0 }}%;"></div>
+                            </div>
+                            <small class="text-muted">{{ par_type.libre.count }} financement(s)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">Affecte projet</h6>
+                            <h3 class="text-primary">{{ "{:,.0f}".format(par_type.projet.montant).replace(",", " ") }}</h3>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-primary" style="width: {{ (par_type.projet.recu / par_type.projet.montant * 100) if par_type.projet.montant > 0 else 0 }}%;"></div>
+                            </div>
+                            <small class="text-muted">{{ par_type.projet.count }} financement(s)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">Affecte usage</h6>
+                            <h3 class="text-info">{{ "{:,.0f}".format(par_type.usage.montant).replace(",", " ") }}</h3>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: {{ (par_type.usage.recu / par_type.usage.montant * 100) if par_type.usage.montant > 0 else 0 }}%;"></div>
+                            </div>
+                            <small class="text-muted">{{ par_type.usage.count }} financement(s)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tranches en retard -->
+        {% if tranches_retard %}
+        <div class="card mb-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Tranches en retard</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Financement</th>
+                                <th>Bailleur</th>
+                                <th>Tranche</th>
+                                <th class="text-end">Montant</th>
+                                <th>Date prevue</th>
+                                <th>Retard</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tranches_retard %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('detail_financement', id=t.financement.id) }}">
+                                        {{ t.financement.reference or 'N/A' }}
+                                    </a>
+                                </td>
+                                <td>{{ t.financement.bailleur.nom if t.financement.bailleur else '-' }}</td>
+                                <td><span class="badge bg-primary">{{ t.numero }}</span></td>
+                                <td class="text-end">{{ "{:,.0f}".format(t.montant_prevu).replace(",", " ") }}</td>
+                                <td>{{ t.date_prevue.strftime('%d/%m/%Y') if t.date_prevue else '-' }}</td>
+                                <td>
+                                    {% set jours_retard = (today() - t.date_prevue).days if t.date_prevue else 0 %}
+                                    <span class="badge bg-danger">{{ jours_retard }} jour(s)</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Prochaines tranches -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Prochaines tranches (30 jours)</h5>
+            </div>
+            <div class="card-body">
+                {% if prochaines_tranches %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Financement</th>
+                                <th>Bailleur</th>
+                                <th>Tranche</th>
+                                <th class="text-end">Montant</th>
+                                <th>Date prevue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in prochaines_tranches %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('detail_financement', id=t.financement.id) }}">
+                                        {{ t.financement.reference or 'N/A' }}
+                                    </a>
+                                </td>
+                                <td>{{ t.financement.bailleur.nom if t.financement.bailleur else '-' }}</td>
+                                <td><span class="badge bg-primary">{{ t.numero }}</span></td>
+                                <td class="text-end">{{ "{:,.0f}".format(t.montant_prevu).replace(",", " ") }}</td>
+                                <td>{{ t.date_prevue.strftime('%d/%m/%Y') if t.date_prevue else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Aucune tranche prevue dans les 30 prochains jours</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Top bailleurs -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Top 5 Bailleurs</h5>
+            </div>
+            <div class="card-body">
+                {% if top_bailleurs %}
+                {% for bailleur, data in top_bailleurs %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong>{{ bailleur }}</strong>
+                        <span>{{ "{:,.0f}".format(data.montant).replace(",", " ") }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        {% set pct = (data.recu / data.montant * 100) if data.montant > 0 else 0 %}
+                        <div class="progress-bar bg-success" style="width: {{ pct }}%;"
+                             title="Recu: {{ "{:,.0f}".format(data.recu).replace(",", " ") }}"></div>
+                    </div>
+                    <small class="text-muted">Recu: {{ "{:,.0f}".format(data.recu).replace(",", " ") }}</small>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted mb-0">Aucun bailleur</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions rapides</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('nouveau_financement') }}" class="btn btn-primary w-100 mb-2">
+                    <i class="bi bi-plus-lg me-2"></i>Nouveau financement
+                </a>
+                <a href="{{ url_for('liste_financements') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-list-ul me-2"></i>Liste des financements
+                </a>
+                <a href="{{ url_for('liste_bailleurs') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-people me-2"></i>Gerer les bailleurs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

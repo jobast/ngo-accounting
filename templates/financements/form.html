@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if financement else 'Nouveau' }} Financement - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-cash-stack me-2"></i>
+        {{ 'Modifier le financement' if financement else 'Nouveau financement' }}
+    </h2>
+    <a href="{{ url_for('liste_financements') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+<form method="POST" id="financementForm">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Informations principales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informations generales</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="reference" class="form-label">Reference</label>
+                            <input type="text" class="form-control" id="reference" name="reference"
+                                   value="{{ financement.reference if financement else '' }}"
+                                   placeholder="Ex: CONV-2026-001">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bailleur_id" class="form-label">Bailleur <span class="text-danger">*</span></label>
+                            <select class="form-select" id="bailleur_id" name="bailleur_id" required>
+                                <option value="">-- Selectionnez --</option>
+                                {% for b in bailleurs %}
+                                <option value="{{ b.id }}"
+                                        {{ 'selected' if financement and financement.bailleur_id == b.id }}>
+                                    {{ b.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="montant" class="form-label">Montant total <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="montant" name="montant"
+                                   value="{{ financement.montant if financement else '' }}"
+                                   placeholder="50 000" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="devise_id" class="form-label">Devise</label>
+                            <select class="form-select" id="devise_id" name="devise_id">
+                                {% for d in devises %}
+                                <option value="{{ d.id }}"
+                                        {{ 'selected' if (financement and financement.devise_id == d.id) or (not financement and d.code == 'XOF') }}>
+                                    {{ d.code }} - {{ d.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="date_accord" class="form-label">Date d'accord</label>
+                            <input type="date" class="form-control" id="date_accord" name="date_accord"
+                                   value="{{ financement.date_accord.strftime('%Y-%m-%d') if financement and financement.date_accord else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="date_fin" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="date_fin" name="date_fin"
+                                   value="{{ financement.date_fin.strftime('%Y-%m-%d') if financement and financement.date_fin else '' }}">
+                        </div>
+                    </div>
+
+                    {% if financement %}
+                    <div class="mb-3">
+                        <label for="statut" class="form-label">Statut</label>
+                        <select class="form-select" id="statut" name="statut">
+                            <option value="actif" {{ 'selected' if financement.statut == 'actif' }}>Actif</option>
+                            <option value="cloture" {{ 'selected' if financement.statut == 'cloture' }}>Cloture</option>
+                            <option value="annule" {{ 'selected' if financement.statut == 'annule' }}>Annule</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2">{{ financement.notes if financement else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Type d'affectation -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-tag me-2"></i>Affectation du financement</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Type d'affectation <span class="text-danger">*</span></label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type_affectation" id="type_libre" value="libre"
+                                   {{ 'checked' if not financement or financement.type_affectation == 'libre' }}>
+                            <label class="btn btn-outline-secondary" for="type_libre">
+                                <i class="bi bi-unlock me-1"></i>Libre (fonctionnement)
+                            </label>
+
+                            <input type="radio" class="btn-check" name="type_affectation" id="type_projet" value="projet"
+                                   {{ 'checked' if financement and financement.type_affectation == 'projet' }}>
+                            <label class="btn btn-outline-primary" for="type_projet">
+                                <i class="bi bi-folder me-1"></i>Affecte a un projet
+                            </label>
+
+                            <input type="radio" class="btn-check" name="type_affectation" id="type_usage" value="usage"
+                                   {{ 'checked' if financement and financement.type_affectation == 'usage' }}>
+                            <label class="btn btn-outline-info" for="type_usage">
+                                <i class="bi bi-bullseye me-1"></i>Affecte a un usage
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Affectation projet -->
+                    <div class="mb-3" id="affectation_projet" style="display: none;">
+                        <label for="projet_id" class="form-label">Projet</label>
+                        <select class="form-select" id="projet_id" name="projet_id">
+                            <option value="">-- Selectionnez un projet --</option>
+                            {% for p in projets %}
+                            <option value="{{ p.id }}"
+                                    {{ 'selected' if financement and financement.projet_id == p.id }}>
+                                {{ p.code }} - {{ p.nom }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Affectation usage -->
+                    <div class="mb-3" id="affectation_usage" style="display: none;">
+                        <label for="affectation_libelle" class="form-label">Description de l'usage</label>
+                        <input type="text" class="form-control" id="affectation_libelle" name="affectation_libelle"
+                               value="{{ financement.affectation_libelle if financement else '' }}"
+                               placeholder="Ex: Terrain et batiment, Vehicule, Equipement informatique">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tranches (uniquement pour nouveau financement) -->
+            {% if not financement %}
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Echeancier des versements</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="ajouterTranche">
+                        <i class="bi bi-plus-lg me-1"></i>Ajouter une tranche
+                    </button>
+                </div>
+                <div class="card-body">
+                    <input type="hidden" id="nb_tranches" name="nb_tranches" value="1">
+
+                    <div id="tranches_container">
+                        <div class="tranche-row row mb-2" data-tranche="1">
+                            <div class="col-md-1 d-flex align-items-center">
+                                <span class="badge bg-primary">1</span>
+                            </div>
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" name="tranche_1_montant"
+                                       placeholder="Montant">
+                            </div>
+                            <div class="col-md-5">
+                                <input type="date" class="form-control" name="tranche_1_date">
+                            </div>
+                            <div class="col-md-1">
+                                <!-- Pas de suppression pour la premiere tranche -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Laissez vide pour un versement unique sans echeancier
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Resume -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Resume</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Bailleur:</strong>
+                        <span id="resume_bailleur">-</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Montant:</strong>
+                        <span id="resume_montant">-</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Type:</strong>
+                        <span id="resume_type">Libre</span>
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-lg me-2"></i>
+                        {{ 'Enregistrer les modifications' if financement else 'Creer le financement' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Aide -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-question-circle me-2"></i>Types d'affectation</h6>
+                </div>
+                <div class="card-body small">
+                    <p><strong>Libre:</strong> Fonds non affectes, utilisables pour le fonctionnement general</p>
+                    <p><strong>Projet:</strong> Fonds affectes a un projet specifique (LED, SOR4D, etc.)</p>
+                    <p class="mb-0"><strong>Usage:</strong> Fonds affectes a un usage precis (terrain, vehicule, etc.)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Gestion des types d'affectation
+const typeRadios = document.querySelectorAll('input[name="type_affectation"]');
+const affectationProjet = document.getElementById('affectation_projet');
+const affectationUsage = document.getElementById('affectation_usage');
+
+function updateAffectation() {
+    const selected = document.querySelector('input[name="type_affectation"]:checked').value;
+
+    affectationProjet.style.display = selected === 'projet' ? 'block' : 'none';
+    affectationUsage.style.display = selected === 'usage' ? 'block' : 'none';
+
+    // Resume
+    const types = { 'libre': 'Libre (fonctionnement)', 'projet': 'Affecte projet', 'usage': 'Affecte usage' };
+    document.getElementById('resume_type').textContent = types[selected];
+}
+
+typeRadios.forEach(radio => radio.addEventListener('change', updateAffectation));
+updateAffectation();
+
+// Resume dynamique
+document.getElementById('bailleur_id').addEventListener('change', function() {
+    const selected = this.options[this.selectedIndex];
+    document.getElementById('resume_bailleur').textContent = selected.value ? selected.text : '-';
+});
+
+document.getElementById('montant').addEventListener('input', function() {
+    const val = this.value.replace(/\s/g, '').replace(',', '.');
+    if (val) {
+        document.getElementById('resume_montant').textContent = parseFloat(val).toLocaleString('fr-FR') + ' ' +
+            (document.getElementById('devise_id').options[document.getElementById('devise_id').selectedIndex].text.split(' ')[0] || 'XOF');
+    } else {
+        document.getElementById('resume_montant').textContent = '-';
+    }
+});
+
+// Init resume
+if (document.getElementById('bailleur_id').value) {
+    document.getElementById('bailleur_id').dispatchEvent(new Event('change'));
+}
+if (document.getElementById('montant').value) {
+    document.getElementById('montant').dispatchEvent(new Event('input'));
+}
+
+// Gestion des tranches
+{% if not financement %}
+let nbTranches = 1;
+
+document.getElementById('ajouterTranche').addEventListener('click', function() {
+    nbTranches++;
+    document.getElementById('nb_tranches').value = nbTranches;
+
+    const container = document.getElementById('tranches_container');
+    const row = document.createElement('div');
+    row.className = 'tranche-row row mb-2';
+    row.dataset.tranche = nbTranches;
+    row.innerHTML = `
+        <div class="col-md-1 d-flex align-items-center">
+            <span class="badge bg-primary">${nbTranches}</span>
+        </div>
+        <div class="col-md-5">
+            <input type="text" class="form-control" name="tranche_${nbTranches}_montant" placeholder="Montant">
+        </div>
+        <div class="col-md-5">
+            <input type="date" class="form-control" name="tranche_${nbTranches}_date">
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-sm btn-outline-danger supprimer-tranche">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+});
+
+document.getElementById('tranches_container').addEventListener('click', function(e) {
+    if (e.target.closest('.supprimer-tranche')) {
+        e.target.closest('.tranche-row').remove();
+        // Renumeroter
+        document.querySelectorAll('.tranche-row').forEach((row, index) => {
+            row.querySelector('.badge').textContent = index + 1;
+        });
+        nbTranches = document.querySelectorAll('.tranche-row').length;
+        document.getElementById('nb_tranches').value = nbTranches;
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration Email Backup - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-envelope-at me-2"></i>Configuration Email Backup</h2>
+    <a href="{{ url_for('liste_backups') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Retour aux sauvegardes
+    </a>
+</div>
+
+<!-- Information -->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Envoi par email:</strong> Configurez les parametres SMTP pour recevoir les sauvegardes par email.
+    Pour Gmail, utilisez un <a href="https://support.google.com/accounts/answer/185833" target="_blank">mot de passe d'application</a>.
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Parametres SMTP</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('config_backup') }}">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="smtp_server" class="form-label">Serveur SMTP <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="smtp_server" name="smtp_server"
+                                   value="{{ config.smtp_server if config else '' }}"
+                                   placeholder="ex: smtp.gmail.com" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="smtp_port" class="form-label">Port <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                   value="{{ config.smtp_port if config else 587 }}"
+                                   placeholder="587" required>
+                            <small class="text-muted">587 pour TLS (recommande)</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="smtp_user" class="form-label">Utilisateur SMTP <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="smtp_user" name="smtp_user"
+                                   value="{{ config.smtp_user if config else '' }}"
+                                   placeholder="votre@email.com" required>
+                            <small class="text-muted">Adresse email d'envoi</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="smtp_password" class="form-label">Mot de passe SMTP <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="smtp_password" name="smtp_password"
+                                       placeholder="{{ '********' if config and config.smtp_password else 'Mot de passe' }}"
+                                       {{ '' if config and config.smtp_password else 'required' }}>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            {% if config and config.smtp_password %}
+                            <small class="text-muted">Laisser vide pour conserver l'actuel</small>
+                            {% else %}
+                            <small class="text-muted">Pour Gmail: mot de passe d'application</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email_destinataire" class="form-label">Email destinataire <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email_destinataire" name="email_destinataire"
+                               value="{{ config.email_destinataire if config else '' }}"
+                               placeholder="backup@votreorganisation.org" required>
+                        <small class="text-muted">Adresse email qui recevra les sauvegardes</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="actif" name="actif"
+                                   {{ 'checked' if config and config.actif else '' }}>
+                            <label class="form-check-label" for="actif">
+                                <strong>Activer l'envoi par email</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">Permet d'envoyer les sauvegardes par email depuis la liste des backups</small>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-2"></i>Enregistrer la configuration
+                        </button>
+                        {% if config and config.smtp_server %}
+                        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#testModal">
+                            <i class="bi bi-send me-2"></i>Tester la connexion
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Statut actuel -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-activity me-2"></i>Statut</h6>
+            </div>
+            <div class="card-body">
+                {% if config and config.actif %}
+                <div class="d-flex align-items-center text-success mb-3">
+                    <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+                    <span>Email actif</span>
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center text-secondary mb-3">
+                    <i class="bi bi-x-circle fs-4 me-2"></i>
+                    <span>Email inactif</span>
+                </div>
+                {% endif %}
+
+                {% if config and config.smtp_server %}
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-1">
+                        <i class="bi bi-server me-2 text-muted"></i>
+                        {{ config.smtp_server }}:{{ config.smtp_port }}
+                    </li>
+                    <li class="mb-1">
+                        <i class="bi bi-person me-2 text-muted"></i>
+                        {{ config.smtp_user }}
+                    </li>
+                    <li>
+                        <i class="bi bi-envelope me-2 text-muted"></i>
+                        {{ config.email_destinataire }}
+                    </li>
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">Non configure</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Aide -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-question-circle me-2"></i>Parametres courants</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm small mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fournisseur</th>
+                            <th>Serveur</th>
+                            <th>Port</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Gmail</td>
+                            <td><code>smtp.gmail.com</code></td>
+                            <td>587</td>
+                        </tr>
+                        <tr>
+                            <td>Outlook</td>
+                            <td><code>smtp.office365.com</code></td>
+                            <td>587</td>
+                        </tr>
+                        <tr>
+                            <td>Yahoo</td>
+                            <td><code>smtp.mail.yahoo.com</code></td>
+                            <td>587</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Test Email -->
+<div class="modal fade" id="testModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-send me-2"></i>Tester la configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Un email de test sera envoye a:</p>
+                <p><strong>{{ config.email_destinataire if config else 'Non configure' }}</strong></p>
+                <p class="text-muted small mb-0">
+                    Cela permet de verifier que les parametres SMTP sont corrects.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form method="POST" action="{{ url_for('test_email_backup') }}" class="d-inline">
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-send me-2"></i>Envoyer le test
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle password visibility
+document.getElementById('togglePassword').addEventListener('click', function() {
+    const password = document.getElementById('smtp_password');
+    const icon = this.querySelector('i');
+
+    if (password.type === 'password') {
+        password.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        password.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+});
+</script>
+{% endblock %}

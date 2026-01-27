@@ -16,6 +16,11 @@ import json
 import shutil
 import glob as glob_module
 from io import BytesIO
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 
 # SECURITY: Rate limiting
 try:
@@ -1081,6 +1086,125 @@ class LigneBonCommande(db.Model):
         return float(self.quantite or 0) * float(self.prix_unitaire or 0)
 
 
+class ConfigBackup(db.Model):
+    """Configuration des backups distants (email, cloud, etc.)"""
+    __tablename__ = 'config_backup'
+
+    id = db.Column(db.Integer, primary_key=True)
+    type_destination = db.Column(db.String(20), nullable=False)  # email, gdrive, sftp
+    actif = db.Column(db.Boolean, default=False)
+
+    # Config Email
+    smtp_server = db.Column(db.String(100))
+    smtp_port = db.Column(db.Integer, default=587)
+    smtp_user = db.Column(db.String(100))
+    smtp_password = db.Column(db.String(200))  # En clair pour simplifier (à chiffrer en prod)
+    email_destinataire = db.Column(db.String(200))
+
+    date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ConfigBackup {self.type_destination}>'
+
+
+class Financement(db.Model):
+    """Dons et subventions des bailleurs"""
+    __tablename__ = 'financements'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reference = db.Column(db.String(50))  # Référence interne ou du bailleur
+    bailleur_id = db.Column(db.Integer, db.ForeignKey('bailleurs.id'), nullable=False)
+
+    # Type d'affectation: libre, projet, usage
+    type_affectation = db.Column(db.String(20), default='libre')
+    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'), nullable=True)
+    affectation_libelle = db.Column(db.String(200), nullable=True)  # Ex: "Terrain et bâtiment"
+
+    # Montant et devise
+    montant = db.Column(db.Numeric(15, 2), nullable=False)
+    devise_id = db.Column(db.Integer, db.ForeignKey('devises.id'))
+
+    # Dates
+    date_accord = db.Column(db.Date)
+    date_fin = db.Column(db.Date, nullable=True)
+
+    statut = db.Column(db.String(20), default='actif')  # actif, cloture, annule
+    notes = db.Column(db.Text)
+
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    bailleur = db.relationship('Bailleur', backref='financements')
+    projet = db.relationship('Projet', backref='financements')
+    devise = db.relationship('Devise')
+    tranches = db.relationship('TrancheFinancement', back_populates='financement',
+                               cascade='all, delete-orphan', order_by='TrancheFinancement.numero')
+
+    def __repr__(self):
+        return f'<Financement {self.reference} - {self.bailleur.nom if self.bailleur else "?"}>'
+
+    @property
+    def montant_recu(self):
+        """Total des montants reçus sur toutes les tranches"""
+        return sum(float(t.montant_recu or 0) for t in self.tranches)
+
+    @property
+    def montant_attendu(self):
+        """Total des montants encore attendus"""
+        return float(self.montant or 0) - self.montant_recu
+
+    @property
+    def pourcentage_recu(self):
+        """Pourcentage du financement reçu"""
+        if not self.montant or self.montant == 0:
+            return 0
+        return round((self.montant_recu / float(self.montant)) * 100, 1)
+
+    @property
+    def prochaine_tranche(self):
+        """Retourne la prochaine tranche attendue"""
+        for t in self.tranches:
+            if t.statut in ('attendu', 'retard'):
+                return t
+        return None
+
+
+class TrancheFinancement(db.Model):
+    """Échéancier des versements d'un financement"""
+    __tablename__ = 'tranches_financement'
+
+    id = db.Column(db.Integer, primary_key=True)
+    financement_id = db.Column(db.Integer, db.ForeignKey('financements.id'), nullable=False)
+    numero = db.Column(db.Integer, default=1)
+
+    montant_prevu = db.Column(db.Numeric(15, 2), nullable=False)
+    date_prevue = db.Column(db.Date)
+
+    montant_recu = db.Column(db.Numeric(15, 2), default=0)
+    date_reception = db.Column(db.Date, nullable=True)
+
+    # Lien vers l'écriture comptable quand reçu
+    piece_comptable_id = db.Column(db.Integer, db.ForeignKey('pieces.id'), nullable=True)
+
+    statut = db.Column(db.String(20), default='attendu')  # attendu, recu, partiel, retard
+
+    # Relations
+    financement = db.relationship('Financement', back_populates='tranches')
+    piece_comptable = db.relationship('PieceComptable')
+
+    def __repr__(self):
+        return f'<Tranche {self.numero} - {self.financement.reference if self.financement else "?"}>'
+
+    @property
+    def est_en_retard(self):
+        """Vérifie si la tranche est en retard"""
+        if self.statut == 'recu':
+            return False
+        if self.date_prevue and self.date_prevue < date.today():
+            return True
+        return False
+
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
@@ -1570,6 +1694,312 @@ def modifier_bailleur(id):
         return redirect(url_for('liste_bailleurs'))
 
     return render_template('bailleurs/form.html', bailleur=bailleur, devises=devises)
+
+
+# =============================================================================
+# ROUTES - FINANCEMENTS (Dons et Subventions)
+# =============================================================================
+
+@app.route('/financements')
+@login_required
+def liste_financements():
+    """Liste des financements/dons"""
+    financements = Financement.query.order_by(Financement.date_creation.desc()).all()
+
+    # Statistiques
+    stats = {
+        'total': len(financements),
+        'actifs': len([f for f in financements if f.statut == 'actif']),
+        'montant_total': sum(float(f.montant or 0) for f in financements),
+        'montant_recu': sum(f.montant_recu for f in financements),
+        'par_type': {
+            'libre': len([f for f in financements if f.type_affectation == 'libre']),
+            'projet': len([f for f in financements if f.type_affectation == 'projet']),
+            'usage': len([f for f in financements if f.type_affectation == 'usage']),
+        }
+    }
+
+    return render_template('financements/liste.html', financements=financements, stats=stats)
+
+
+@app.route('/financements/nouveau', methods=['GET', 'POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def nouveau_financement():
+    """Créer un nouveau financement"""
+    if request.method == 'POST':
+        financement = Financement(
+            reference=request.form.get('reference'),
+            bailleur_id=int(request.form['bailleur_id']),
+            type_affectation=request.form.get('type_affectation', 'libre'),
+            montant=Decimal(request.form['montant'].replace(',', '.').replace(' ', '')),
+            devise_id=int(request.form['devise_id']) if request.form.get('devise_id') else None,
+            date_accord=datetime.strptime(request.form['date_accord'], '%Y-%m-%d').date() if request.form.get('date_accord') else None,
+            date_fin=datetime.strptime(request.form['date_fin'], '%Y-%m-%d').date() if request.form.get('date_fin') else None,
+            notes=request.form.get('notes'),
+            statut='actif'
+        )
+
+        # Affectation selon le type
+        if financement.type_affectation == 'projet' and request.form.get('projet_id'):
+            financement.projet_id = int(request.form['projet_id'])
+        elif financement.type_affectation == 'usage':
+            financement.affectation_libelle = request.form.get('affectation_libelle')
+
+        db.session.add(financement)
+        db.session.flush()  # Pour obtenir l'ID
+
+        # Créer les tranches si spécifiées
+        nb_tranches = int(request.form.get('nb_tranches', 1))
+        for i in range(1, nb_tranches + 1):
+            montant_tranche = request.form.get(f'tranche_{i}_montant')
+            date_tranche = request.form.get(f'tranche_{i}_date')
+
+            if montant_tranche:
+                tranche = TrancheFinancement(
+                    financement_id=financement.id,
+                    numero=i,
+                    montant_prevu=Decimal(montant_tranche.replace(',', '.').replace(' ', '')),
+                    date_prevue=datetime.strptime(date_tranche, '%Y-%m-%d').date() if date_tranche else None,
+                    statut='attendu'
+                )
+                db.session.add(tranche)
+
+        db.session.commit()
+        log_audit('financement', financement.id, 'CREATE', new_values={
+            'reference': financement.reference,
+            'bailleur': financement.bailleur.nom,
+            'montant': str(financement.montant)
+        })
+
+        flash(f'Financement "{financement.reference}" créé avec succès', 'success')
+        return redirect(url_for('detail_financement', id=financement.id))
+
+    bailleurs = Bailleur.query.order_by(Bailleur.nom).all()
+    projets = Projet.query.filter_by(statut='actif').order_by(Projet.code).all()
+    devises = Devise.query.all()
+
+    return render_template('financements/form.html',
+                           financement=None,
+                           bailleurs=bailleurs,
+                           projets=projets,
+                           devises=devises)
+
+
+@app.route('/financements/<int:id>')
+@login_required
+def detail_financement(id):
+    """Détail d'un financement"""
+    financement = Financement.query.get_or_404(id)
+    return render_template('financements/detail.html', financement=financement, today=date.today)
+
+
+@app.route('/financements/<int:id>/modifier', methods=['GET', 'POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def modifier_financement(id):
+    """Modifier un financement"""
+    financement = Financement.query.get_or_404(id)
+
+    if request.method == 'POST':
+        financement.reference = request.form.get('reference')
+        financement.bailleur_id = int(request.form['bailleur_id'])
+        financement.type_affectation = request.form.get('type_affectation', 'libre')
+        financement.montant = Decimal(request.form['montant'].replace(',', '.').replace(' ', ''))
+        financement.devise_id = int(request.form['devise_id']) if request.form.get('devise_id') else None
+        financement.date_accord = datetime.strptime(request.form['date_accord'], '%Y-%m-%d').date() if request.form.get('date_accord') else None
+        financement.date_fin = datetime.strptime(request.form['date_fin'], '%Y-%m-%d').date() if request.form.get('date_fin') else None
+        financement.notes = request.form.get('notes')
+        financement.statut = request.form.get('statut', 'actif')
+
+        # Affectation selon le type
+        if financement.type_affectation == 'projet':
+            financement.projet_id = int(request.form['projet_id']) if request.form.get('projet_id') else None
+            financement.affectation_libelle = None
+        elif financement.type_affectation == 'usage':
+            financement.projet_id = None
+            financement.affectation_libelle = request.form.get('affectation_libelle')
+        else:
+            financement.projet_id = None
+            financement.affectation_libelle = None
+
+        db.session.commit()
+        log_audit('financement', financement.id, 'UPDATE')
+
+        flash('Financement modifié avec succès', 'success')
+        return redirect(url_for('detail_financement', id=financement.id))
+
+    bailleurs = Bailleur.query.order_by(Bailleur.nom).all()
+    projets = Projet.query.order_by(Projet.code).all()
+    devises = Devise.query.all()
+
+    return render_template('financements/form.html',
+                           financement=financement,
+                           bailleurs=bailleurs,
+                           projets=projets,
+                           devises=devises)
+
+
+@app.route('/financements/<int:id>/supprimer', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def supprimer_financement(id):
+    """Supprimer un financement"""
+    financement = Financement.query.get_or_404(id)
+
+    # Vérifier qu'aucune tranche n'a été reçue (même partiellement)
+    if any(t.statut in ('recu', 'partiel') or (t.montant_recu and t.montant_recu > 0) for t in financement.tranches):
+        flash('Impossible de supprimer: des tranches ont déjà été reçues (totalement ou partiellement)', 'danger')
+        return redirect(url_for('detail_financement', id=id))
+
+    log_audit('financement', financement.id, 'DELETE', old_values={
+        'reference': financement.reference,
+        'bailleur': financement.bailleur.nom
+    })
+
+    db.session.delete(financement)
+    db.session.commit()
+
+    flash('Financement supprimé', 'success')
+    return redirect(url_for('liste_financements'))
+
+
+@app.route('/financements/<int:id>/tranches/ajouter', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def ajouter_tranche(id):
+    """Ajouter une tranche à un financement"""
+    financement = Financement.query.get_or_404(id)
+
+    dernier_numero = max([t.numero for t in financement.tranches], default=0)
+
+    tranche = TrancheFinancement(
+        financement_id=financement.id,
+        numero=dernier_numero + 1,
+        montant_prevu=Decimal(request.form['montant_prevu'].replace(',', '.').replace(' ', '')),
+        date_prevue=datetime.strptime(request.form['date_prevue'], '%Y-%m-%d').date() if request.form.get('date_prevue') else None,
+        statut='attendu'
+    )
+
+    db.session.add(tranche)
+    db.session.commit()
+
+    flash(f'Tranche {tranche.numero} ajoutée', 'success')
+    return redirect(url_for('detail_financement', id=id))
+
+
+@app.route('/financements/tranches/<int:id>/recevoir', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def recevoir_tranche(id):
+    """Marquer une tranche comme reçue"""
+    tranche = TrancheFinancement.query.get_or_404(id)
+
+    montant_recu = request.form.get('montant_recu')
+    if montant_recu:
+        tranche.montant_recu = Decimal(montant_recu.replace(',', '.').replace(' ', ''))
+    else:
+        tranche.montant_recu = tranche.montant_prevu
+
+    tranche.date_reception = datetime.strptime(request.form['date_reception'], '%Y-%m-%d').date() if request.form.get('date_reception') else date.today()
+
+    # Statut: recu si montant complet, partiel sinon
+    if tranche.montant_recu >= tranche.montant_prevu:
+        tranche.statut = 'recu'
+    else:
+        tranche.statut = 'partiel'
+
+    db.session.commit()
+
+    log_audit('tranche_financement', tranche.id, 'RECEPTION', new_values={
+        'financement': tranche.financement.reference,
+        'montant_recu': str(tranche.montant_recu)
+    })
+
+    flash(f'Tranche {tranche.numero} marquée comme reçue ({tranche.montant_recu})', 'success')
+    return redirect(url_for('detail_financement', id=tranche.financement_id))
+
+
+@app.route('/financements/tranches/<int:id>/supprimer', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def supprimer_tranche(id):
+    """Supprimer une tranche"""
+    tranche = TrancheFinancement.query.get_or_404(id)
+    financement_id = tranche.financement_id
+
+    if tranche.statut in ('recu', 'partiel') or (tranche.montant_recu and tranche.montant_recu > 0):
+        flash('Impossible de supprimer une tranche déjà reçue (totalement ou partiellement)', 'danger')
+        return redirect(url_for('detail_financement', id=financement_id))
+
+    db.session.delete(tranche)
+    db.session.commit()
+
+    flash('Tranche supprimée', 'success')
+    return redirect(url_for('detail_financement', id=financement_id))
+
+
+@app.route('/revenus/tableau-de-bord')
+@login_required
+def tableau_bord_revenus():
+    """Tableau de bord des revenus"""
+    # Financements actifs
+    financements = Financement.query.filter_by(statut='actif').all()
+
+    # Statistiques globales
+    stats = {
+        'nb_financements': len(financements),
+        'montant_total': sum(float(f.montant or 0) for f in financements),
+        'montant_recu': sum(f.montant_recu for f in financements),
+        'montant_attendu': sum(f.montant_attendu for f in financements),
+    }
+    stats['pourcentage_recu'] = round((stats['montant_recu'] / stats['montant_total'] * 100), 1) if stats['montant_total'] > 0 else 0
+
+    # Par type d'affectation
+    par_type = {}
+    for type_aff in ['libre', 'projet', 'usage']:
+        fins = [f for f in financements if f.type_affectation == type_aff]
+        par_type[type_aff] = {
+            'count': len(fins),
+            'montant': sum(float(f.montant or 0) for f in fins),
+            'recu': sum(f.montant_recu for f in fins)
+        }
+
+    # Tranches en retard
+    tranches_retard = TrancheFinancement.query.join(Financement).filter(
+        Financement.statut == 'actif',
+        TrancheFinancement.statut.in_(['attendu', 'retard']),
+        TrancheFinancement.date_prevue < date.today()
+    ).all()
+
+    # Prochaines tranches attendues (30 jours)
+    date_limite = date.today() + timedelta(days=30)
+    prochaines_tranches = TrancheFinancement.query.join(Financement).filter(
+        Financement.statut == 'actif',
+        TrancheFinancement.statut == 'attendu',
+        TrancheFinancement.date_prevue >= date.today(),
+        TrancheFinancement.date_prevue <= date_limite
+    ).order_by(TrancheFinancement.date_prevue).all()
+
+    # Top bailleurs
+    bailleurs_stats = {}
+    for f in financements:
+        bailleur_nom = f.bailleur.nom if f.bailleur else 'Inconnu'
+        if bailleur_nom not in bailleurs_stats:
+            bailleurs_stats[bailleur_nom] = {'montant': 0, 'recu': 0}
+        bailleurs_stats[bailleur_nom]['montant'] += float(f.montant or 0)
+        bailleurs_stats[bailleur_nom]['recu'] += f.montant_recu
+
+    top_bailleurs = sorted(bailleurs_stats.items(), key=lambda x: x[1]['montant'], reverse=True)[:5]
+
+    return render_template('financements/tableau_bord.html',
+                           stats=stats,
+                           par_type=par_type,
+                           tranches_retard=tranches_retard,
+                           prochaines_tranches=prochaines_tranches,
+                           top_bailleurs=top_bailleurs,
+                           financements=financements,
+                           today=date.today)
 
 
 # =============================================================================
@@ -5667,7 +6097,11 @@ def get_db_path():
     """Obtenir le chemin de la base de données SQLite"""
     db_uri = app.config['SQLALCHEMY_DATABASE_URI']
     if db_uri.startswith('sqlite:///'):
-        return db_uri.replace('sqlite:///', '')
+        db_file = db_uri.replace('sqlite:///', '')
+        # Si chemin relatif, le rendre absolu par rapport au dossier instance
+        if not os.path.isabs(db_file):
+            db_file = os.path.join(app.instance_path, db_file)
+        return db_file
     return None
 
 
@@ -5749,6 +6183,68 @@ def cleanup_old_backups():
         os.remove(old_backup)
 
 
+def envoyer_backup_email(backup_path, destinataire=None):
+    """Envoyer un backup par email"""
+    config = ConfigBackup.query.filter_by(type_destination='email', actif=True).first()
+    if not config:
+        return False, "Configuration email non définie ou inactive"
+
+    if not config.smtp_server or not config.smtp_user:
+        return False, "Configuration SMTP incomplète"
+
+    dest = destinataire or config.email_destinataire
+    if not dest:
+        return False, "Aucun destinataire défini"
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = config.smtp_user
+        msg['To'] = dest
+        msg['Subject'] = f'CREATES - Sauvegarde du {date.today().strftime("%d/%m/%Y")}'
+
+        # Corps du message
+        file_size = os.path.getsize(backup_path) / 1024 / 1024
+        body = f"""
+Sauvegarde automatique CREATES
+
+Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Fichier: {os.path.basename(backup_path)}
+Taille: {file_size:.2f} Mo
+
+Ce message a été envoyé automatiquement par le système de sauvegarde CREATES.
+Ne pas répondre à cet email.
+
+--
+GIE CREATES
+Système de comptabilité
+        """
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        # Pièce jointe
+        with open(backup_path, 'rb') as f:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition',
+                          f'attachment; filename={os.path.basename(backup_path)}')
+            msg.attach(part)
+
+        # Envoi
+        server = smtplib.SMTP(config.smtp_server, config.smtp_port, timeout=30)
+        server.starttls()
+        server.login(config.smtp_user, config.smtp_password)
+        server.send_message(msg)
+        server.quit()
+
+        return True, "Email envoyé avec succès"
+    except smtplib.SMTPAuthenticationError:
+        return False, "Erreur d'authentification SMTP. Vérifiez les identifiants."
+    except smtplib.SMTPException as e:
+        return False, f"Erreur SMTP: {str(e)}"
+    except Exception as e:
+        return False, f"Erreur: {str(e)}"
+
+
 @app.route('/admin/backups')
 @login_required
 @role_required(['directeur'])
@@ -5757,10 +6253,12 @@ def liste_backups():
     backups = list_backups()
     db_path = get_db_path()
     db_size = os.path.getsize(db_path) if db_path and os.path.exists(db_path) else 0
+    email_config = ConfigBackup.query.filter_by(type_destination='email').first()
 
     return render_template('admin/backups.html',
                            backups=backups,
-                           db_size=db_size)
+                           db_size=db_size,
+                           email_config=email_config)
 
 
 @app.route('/admin/backups/creer', methods=['POST'])
@@ -5856,6 +6354,104 @@ def restaurer_backup(filename):
     return redirect(url_for('liste_backups'))
 
 
+@app.route('/admin/backups/config', methods=['GET', 'POST'])
+@login_required
+@role_required(['directeur'])
+def config_backup():
+    """Configurer les destinations de backup (email)"""
+    config = ConfigBackup.query.filter_by(type_destination='email').first()
+
+    if request.method == 'POST':
+        if not config:
+            config = ConfigBackup(type_destination='email')
+            db.session.add(config)
+
+        config.smtp_server = request.form.get('smtp_server', '').strip()
+        config.smtp_port = int(request.form.get('smtp_port', 587))
+        config.smtp_user = request.form.get('smtp_user', '').strip()
+
+        # Ne mettre à jour le mot de passe que s'il est fourni
+        new_password = request.form.get('smtp_password', '')
+        if new_password:
+            config.smtp_password = new_password
+
+        config.email_destinataire = request.form.get('email_destinataire', '').strip()
+        config.actif = request.form.get('actif') == 'on'
+
+        db.session.commit()
+        log_audit('config_backup', config.id, 'UPDATE', new_values={
+            'smtp_server': config.smtp_server,
+            'smtp_user': config.smtp_user,
+            'actif': config.actif
+        })
+        flash('Configuration email sauvegardée', 'success')
+        return redirect(url_for('liste_backups'))
+
+    return render_template('admin/backup_config.html', config=config)
+
+
+@app.route('/admin/backups/test-email', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def test_email_backup():
+    """Tester l'envoi d'email de backup"""
+    config = ConfigBackup.query.filter_by(type_destination='email').first()
+
+    if not config or not config.smtp_server:
+        flash('Veuillez d\'abord configurer les paramètres SMTP', 'warning')
+        return redirect(url_for('config_backup'))
+
+    # Créer un petit fichier test
+    test_file = os.path.join(BACKUP_MANUAL_FOLDER, 'test_email.txt')
+    try:
+        with open(test_file, 'w', encoding='utf-8') as f:
+            f.write(f'Test CREATES backup - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}\n')
+            f.write('Ce fichier est un test de la configuration email.\n')
+            f.write('Si vous recevez cet email, la configuration est correcte.')
+
+        # Activer temporairement la config pour le test
+        was_active = config.actif
+        config.actif = True
+
+        success, message = envoyer_backup_email(test_file)
+
+        # Restaurer l'état précédent
+        config.actif = was_active
+
+        if success:
+            flash('Email de test envoyé avec succès! Vérifiez votre boîte de réception.', 'success')
+            log_audit('config_backup', config.id, 'TEST_EMAIL', new_values={'success': True})
+        else:
+            flash(f'Erreur lors de l\'envoi: {message}', 'danger')
+            log_audit('config_backup', config.id, 'TEST_EMAIL', new_values={'success': False, 'error': message})
+    finally:
+        # Supprimer le fichier test
+        if os.path.exists(test_file):
+            os.remove(test_file)
+
+    return redirect(url_for('config_backup'))
+
+
+@app.route('/admin/backups/<path:filename>/envoyer-email', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def envoyer_backup_par_email(filename):
+    """Envoyer un backup spécifique par email"""
+    for folder in [BACKUP_MANUAL_FOLDER, BACKUP_DAILY_FOLDER, BACKUP_WEEKLY_FOLDER]:
+        filepath = os.path.join(folder, os.path.basename(filename))
+        if os.path.exists(filepath):
+            success, message = envoyer_backup_email(filepath)
+            if success:
+                log_audit('backup', None, 'EMAIL_SENT', new_values={'filename': filename})
+                flash(f'Backup "{filename}" envoyé par email', 'success')
+            else:
+                flash(f'Erreur envoi email: {message}', 'danger')
+            return redirect(url_for('liste_backups'))
+
+    flash('Fichier de sauvegarde non trouvé', 'danger')
+    return redirect(url_for('liste_backups'))
+
+
 @app.route('/admin/backups/export-excel')
 @login_required
 @role_required(['directeur', 'comptable'])
@@ -5944,14 +6540,14 @@ def export_donnees_excel():
 
     # === Feuille 4: Lignes budgétaires ===
     ws4 = wb.create_sheet("Lignes Budget")
-    ws4.append(['Projet', 'Code', 'Libelle', 'Categorie', 'Montant Prevu'])
+    ws4.append(['Projet', 'Code', 'Intitule', 'Categorie', 'Montant Prevu'])
 
     lignes_budget = LigneBudget.query.all()
     for lb in lignes_budget:
         ws4.append([
             lb.projet.code if lb.projet else '',
             lb.code,
-            lb.libelle,
+            lb.intitule,
             lb.categorie.nom if lb.categorie else '',
             float(lb.montant_prevu) if lb.montant_prevu else 0
         ])

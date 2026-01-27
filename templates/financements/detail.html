@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Financement {{ financement.reference }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-cash-stack me-2"></i>
+        {{ financement.reference or 'Financement #' + financement.id|string }}
+    </h2>
+    <div>
+        <a href="{{ url_for('liste_financements') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+        <a href="{{ url_for('modifier_financement', id=financement.id) }}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Informations principales -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informations generales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">Reference</th>
+                                <td>{{ financement.reference or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Bailleur</th>
+                                <td>
+                                    <strong>{{ financement.bailleur.nom if financement.bailleur else '-' }}</strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Date d'accord</th>
+                                <td>{{ financement.date_accord.strftime('%d/%m/%Y') if financement.date_accord else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Date de fin</th>
+                                <td>{{ financement.date_fin.strftime('%d/%m/%Y') if financement.date_fin else '-' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">Type</th>
+                                <td>
+                                    {% if financement.type_affectation == 'libre' %}
+                                    <span class="badge bg-secondary">Libre (fonctionnement)</span>
+                                    {% elif financement.type_affectation == 'projet' %}
+                                    <span class="badge bg-primary">Affecte projet</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Affecte usage</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Affectation</th>
+                                <td>
+                                    {% if financement.type_affectation == 'projet' and financement.projet %}
+                                    <a href="{{ url_for('detail_projet', id=financement.projet.id) }}">
+                                        {{ financement.projet.code }} - {{ financement.projet.nom }}
+                                    </a>
+                                    {% elif financement.type_affectation == 'usage' %}
+                                    {{ financement.affectation_libelle or '-' }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Statut</th>
+                                <td>
+                                    {% if financement.statut == 'actif' %}
+                                    <span class="badge bg-success">Actif</span>
+                                    {% elif financement.statut == 'cloture' %}
+                                    <span class="badge bg-secondary">Cloture</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Annule</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Devise</th>
+                                <td>{{ financement.devise.code if financement.devise else 'XOF' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                {% if financement.notes %}
+                <div class="mt-3 p-3 bg-light rounded">
+                    <strong>Notes:</strong><br>
+                    {{ financement.notes }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tranches / Echeancier -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Echeancier des versements</h5>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#ajouterTrancheModal">
+                    <i class="bi bi-plus-lg me-1"></i>Ajouter une tranche
+                </button>
+            </div>
+            <div class="card-body">
+                {% if financement.tranches %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th class="text-end">Montant prevu</th>
+                                <th>Date prevue</th>
+                                <th class="text-end">Montant recu</th>
+                                <th>Date reception</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in financement.tranches %}
+                            <tr class="{{ 'table-danger' if t.est_en_retard else '' }}">
+                                <td><span class="badge bg-primary">{{ t.numero }}</span></td>
+                                <td class="text-end">{{ "{:,.0f}".format(t.montant_prevu).replace(",", " ") }}</td>
+                                <td>
+                                    {{ t.date_prevue.strftime('%d/%m/%Y') if t.date_prevue else '-' }}
+                                    {% if t.est_en_retard %}
+                                    <i class="bi bi-exclamation-triangle text-danger" title="En retard"></i>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if t.montant_recu %}
+                                    {{ "{:,.0f}".format(t.montant_recu).replace(",", " ") }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>{{ t.date_reception.strftime('%d/%m/%Y') if t.date_reception else '-' }}</td>
+                                <td>
+                                    {% if t.statut == 'recu' %}
+                                    <span class="badge bg-success">Recu</span>
+                                    {% elif t.statut == 'partiel' %}
+                                    <span class="badge bg-warning text-dark">Partiel</span>
+                                    {% elif t.est_en_retard %}
+                                    <span class="badge bg-danger">En retard</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Attendu</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if t.statut not in ['recu'] %}
+                                    <button type="button" class="btn btn-sm btn-success"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#recevoirTrancheModal"
+                                            data-tranche-id="{{ t.id }}"
+                                            data-tranche-numero="{{ t.numero }}"
+                                            data-tranche-montant="{{ t.montant_prevu }}">
+                                        <i class="bi bi-check-lg"></i> Recevoir
+                                    </button>
+                                    {% endif %}
+                                    {% if t.statut != 'recu' %}
+                                    <form method="POST" action="{{ url_for('supprimer_tranche', id=t.id) }}"
+                                          class="d-inline" onsubmit="return confirm('Supprimer cette tranche?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="2" class="text-end">Total:</th>
+                                <td></td>
+                                <td class="text-end fw-bold">
+                                    {{ "{:,.0f}".format(financement.montant_recu).replace(",", " ") }}
+                                </td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-x display-4 text-muted"></i>
+                    <p class="text-muted mt-3">Aucun echeancier defini</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ajouterTrancheModal">
+                        <i class="bi bi-plus-lg me-1"></i>Ajouter une tranche
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Resume financier -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Resume financier</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Montant total</small>
+                    <h3 class="mb-0">
+                        {{ "{:,.0f}".format(financement.montant).replace(",", " ") }}
+                        <small>{{ financement.devise.code if financement.devise else 'XOF' }}</small>
+                    </h3>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">Progression</small>
+                        <small class="fw-bold">{{ financement.pourcentage_recu }}%</small>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {{ financement.pourcentage_recu }}%;">
+                            {{ "{:,.0f}".format(financement.montant_recu).replace(",", " ") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-muted d-block">Recu</small>
+                            <strong class="text-success">
+                                {{ "{:,.0f}".format(financement.montant_recu).replace(",", " ") }}
+                            </strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-warning bg-opacity-10 rounded">
+                            <small class="text-muted d-block">Attendu</small>
+                            <strong class="text-warning">
+                                {{ "{:,.0f}".format(financement.montant_attendu).replace(",", " ") }}
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prochaine tranche -->
+        {% if financement.prochaine_tranche %}
+        <div class="card mb-4 {{ 'border-danger' if financement.prochaine_tranche.est_en_retard else 'border-warning' }}">
+            <div class="card-header {{ 'bg-danger text-white' if financement.prochaine_tranche.est_en_retard else 'bg-warning' }}">
+                <h6 class="mb-0">
+                    <i class="bi bi-clock me-2"></i>
+                    {{ 'Tranche en retard!' if financement.prochaine_tranche.est_en_retard else 'Prochaine tranche' }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-1">
+                    <strong>Tranche {{ financement.prochaine_tranche.numero }}</strong>
+                </p>
+                <p class="mb-1">
+                    Montant: <strong>{{ "{:,.0f}".format(financement.prochaine_tranche.montant_prevu).replace(",", " ") }}</strong>
+                </p>
+                <p class="mb-0">
+                    Date: <strong>{{ financement.prochaine_tranche.date_prevue.strftime('%d/%m/%Y') if financement.prochaine_tranche.date_prevue else '-' }}</strong>
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Actions</h6>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('modifier_financement', id=financement.id) }}"
+                   class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-pencil me-2"></i>Modifier
+                </a>
+                {% if not financement.tranches or not any(t.statut == 'recu' for t in financement.tranches) %}
+                <form method="POST" action="{{ url_for('supprimer_financement', id=financement.id) }}"
+                      onsubmit="return confirm('Supprimer ce financement?');">
+                    <button type="submit" class="btn btn-outline-danger w-100">
+                        <i class="bi bi-trash me-2"></i>Supprimer
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ajouter tranche -->
+<div class="modal fade" id="ajouterTrancheModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Ajouter une tranche</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('ajouter_tranche', id=financement.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="montant_prevu" class="form-label">Montant prevu <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="montant_prevu" required
+                               placeholder="Ex: 10 000 000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="date_prevue" class="form-label">Date prevue</label>
+                        <input type="date" class="form-control" name="date_prevue">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Recevoir tranche -->
+<div class="modal fade" id="recevoirTrancheModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-lg me-2"></i>Recevoir la tranche</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="recevoirTrancheForm">
+                <div class="modal-body">
+                    <p>Tranche <strong id="modal_tranche_numero"></strong></p>
+                    <div class="mb-3">
+                        <label for="montant_recu" class="form-label">Montant recu</label>
+                        <input type="text" class="form-control" name="montant_recu" id="modal_montant_recu"
+                               placeholder="Laissez vide pour le montant prevu complet">
+                        <small class="text-muted">Montant prevu: <span id="modal_montant_prevu"></span></small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date_reception" class="form-label">Date de reception</label>
+                        <input type="date" class="form-control" name="date_reception"
+                               value="{{ today().strftime('%Y-%m-%d') if today is defined else '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Confirmer la reception</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Modal recevoir tranche
+document.getElementById('recevoirTrancheModal').addEventListener('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const trancheId = button.getAttribute('data-tranche-id');
+    const trancheNumero = button.getAttribute('data-tranche-numero');
+    const trancheMontant = button.getAttribute('data-tranche-montant');
+
+    document.getElementById('modal_tranche_numero').textContent = trancheNumero;
+    document.getElementById('modal_montant_prevu').textContent = parseFloat(trancheMontant).toLocaleString('fr-FR');
+    document.getElementById('modal_montant_recu').placeholder = trancheMontant;
+    document.getElementById('recevoirTrancheForm').action = '/financements/tranches/' + trancheId + '/recevoir';
+
+    // Date du jour
+    document.querySelector('#recevoirTrancheModal input[name="date_reception"]').value =
+        new Date().toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

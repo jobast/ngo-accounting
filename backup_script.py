@@ -7,20 +7,23 @@ Ce script effectue des sauvegardes automatiques de la base de données.
 Il peut être exécuté via cron pour des sauvegardes planifiées.
 
 Usage:
-    python backup_script.py [--type daily|weekly|manual] [--cleanup]
+    python backup_script.py [--type daily|weekly|manual] [--cleanup] [--email]
 
 Exemples cron:
-    # Sauvegarde quotidienne à 2h du matin
-    0 2 * * * cd /path/to/ngo-accounting && python backup_script.py --type daily --cleanup
+    # Sauvegarde quotidienne à 2h du matin avec envoi email
+    0 2 * * * cd /path/to/ngo-accounting && python backup_script.py --type daily --cleanup --email
 
     # Sauvegarde hebdomadaire le dimanche à 3h du matin
-    0 3 * * 0 cd /path/to/ngo-accounting && python backup_script.py --type weekly
+    0 3 * * 0 cd /path/to/ngo-accounting && python backup_script.py --type weekly --email
 
 Configuration:
     Les sauvegardes sont stockées dans le dossier 'backups/' avec la structure:
     - backups/daily/   : Sauvegardes quotidiennes (7 derniers jours)
     - backups/weekly/  : Sauvegardes hebdomadaires (4 dernières semaines)
     - backups/manual/  : Sauvegardes manuelles (conservation illimitée)
+
+    Pour l'envoi par email, configurez les paramètres dans l'interface web:
+    Administration > Sauvegardes > Configurer email
 """
 
 import os
@@ -29,6 +32,11 @@ import shutil
 import argparse
 from datetime import datetime, date
 import glob
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 
 # Configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -164,6 +172,103 @@ def list_backups():
     return backups
 
 
+def get_email_config():
+    """Récupérer la configuration email depuis la base de données"""
+    try:
+        # Import dynamique pour éviter les dépendances circulaires
+        import sqlite3
+
+        db_path = get_db_path()
+        if not db_path:
+            return None
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT smtp_server, smtp_port, smtp_user, smtp_password, email_destinataire, actif
+            FROM config_backup
+            WHERE type_destination = 'email' AND actif = 1
+        ''')
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                'smtp_server': row[0],
+                'smtp_port': row[1],
+                'smtp_user': row[2],
+                'smtp_password': row[3],
+                'email_destinataire': row[4],
+                'actif': row[5]
+            }
+        return None
+    except Exception as e:
+        print(f"Erreur lors de la récupération de la config email: {e}")
+        return None
+
+
+def envoyer_backup_email(backup_path):
+    """Envoyer un backup par email"""
+    config = get_email_config()
+    if not config:
+        return False, "Configuration email non définie ou inactive"
+
+    if not config['smtp_server'] or not config['smtp_user']:
+        return False, "Configuration SMTP incomplète"
+
+    if not config['email_destinataire']:
+        return False, "Aucun destinataire défini"
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = config['smtp_user']
+        msg['To'] = config['email_destinataire']
+        msg['Subject'] = f'CREATES - Sauvegarde automatique du {date.today().strftime("%d/%m/%Y")}'
+
+        # Corps du message
+        file_size = os.path.getsize(backup_path) / 1024 / 1024
+        body = f"""
+Sauvegarde automatique CREATES
+
+Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Fichier: {os.path.basename(backup_path)}
+Taille: {file_size:.2f} Mo
+
+Ce message a été envoyé automatiquement par le script de sauvegarde CREATES.
+Ne pas répondre à cet email.
+
+--
+GIE CREATES
+Système de comptabilité
+        """
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        # Pièce jointe
+        with open(backup_path, 'rb') as f:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition',
+                          f'attachment; filename={os.path.basename(backup_path)}')
+            msg.attach(part)
+
+        # Envoi
+        server = smtplib.SMTP(config['smtp_server'], config['smtp_port'], timeout=30)
+        server.starttls()
+        server.login(config['smtp_user'], config['smtp_password'])
+        server.send_message(msg)
+        server.quit()
+
+        return True, "Email envoyé avec succès"
+    except smtplib.SMTPAuthenticationError:
+        return False, "Erreur d'authentification SMTP"
+    except smtplib.SMTPException as e:
+        return False, f"Erreur SMTP: {str(e)}"
+    except Exception as e:
+        return False, f"Erreur: {str(e)}"
+
+
 def print_status():
     """Afficher le statut des sauvegardes"""
     print("\n" + "=" * 60)
@@ -203,7 +308,7 @@ def main():
         epilog="""
 Exemples:
   python backup_script.py --type daily --cleanup    Sauvegarde quotidienne + nettoyage
-  python backup_script.py --type weekly             Sauvegarde hebdomadaire
+  python backup_script.py --type weekly --email     Sauvegarde hebdomadaire + envoi email
   python backup_script.py --status                  Afficher le statut
   python backup_script.py --list                    Lister les sauvegardes
         """
@@ -213,6 +318,8 @@ Exemples:
                         default='daily', help='Type de sauvegarde (défaut: daily)')
     parser.add_argument('--cleanup', action='store_true',
                         help='Nettoyer les anciennes sauvegardes')
+    parser.add_argument('--email', action='store_true',
+                        help='Envoyer le backup par email après création')
     parser.add_argument('--status', action='store_true',
                         help='Afficher le statut des sauvegardes')
     parser.add_argument('--list', action='store_true',
@@ -240,6 +347,15 @@ Exemples:
     if args.cleanup:
         print("\nNettoyage des anciennes sauvegardes...")
         cleanup_old_backups()
+
+    # Envoi par email si demandé
+    if args.email:
+        print("\nEnvoi par email...")
+        success, message = envoyer_backup_email(backup_path)
+        if success:
+            print(f"OK: {message}")
+        else:
+            print(f"ERREUR: {message}")
 
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Sauvegarde terminée\n")
     return 0

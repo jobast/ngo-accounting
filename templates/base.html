@@ -211,6 +211,22 @@
                 </a>
             </li>
             <li class="nav-item">
+                <small class="nav-section-title text-white-50">REVENUS</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'financement' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_financements') }}">
+                    <i class="bi bi-cash-stack"></i> Financements
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'tableau_bord_revenus' %}active{% endif %}" href="{{ url_for('tableau_bord_revenus') }}">
+                    <i class="bi bi-graph-up"></i> Tableau de bord
+                </a>
+            </li>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">ACHATS</small>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if 'fournisseur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_fournisseurs') }}">
                     <i class="bi bi-building"></i> Fournisseurs
                 </a>
