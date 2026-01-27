@@ -290,7 +290,7 @@
                         </div>
                     </div>
 
-                    <!-- Projet -->
+                    <!-- Projet et Ligne budgétaire -->
                     <div class="form-section">
                         <div class="form-section-title"><i class="bi bi-folder me-2"></i>Imputation projet</div>
                         <div class="form-check form-switch mb-3">
@@ -299,12 +299,27 @@
                         </div>
 
                         <div id="singleProjetDepense">
-                            <select class="form-select" name="projet_id">
-                                <option value="">-- Aucun projet (frais généraux) --</option>
-                                {% for projet in projets %}
-                                <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="mb-3">
+                                <label class="form-label">Projet</label>
+                                <select class="form-select" name="projet_id" id="projetDepense" onchange="updateLignesBudget('depense')">
+                                    <option value="">-- Aucun projet (frais généraux) --</option>
+                                    {% for projet in projets %}
+                                    <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3" id="ligneBudgetDepenseContainer" style="display: none;">
+                                <label class="form-label">
+                                    <i class="bi bi-list-check me-1"></i>Ligne budgétaire
+                                    <small class="text-muted">(pour suivi budget)</small>
+                                </label>
+                                <select class="form-select" name="ligne_budget_id" id="ligneBudgetDepense">
+                                    <option value="">-- Sélectionner une ligne --</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    Lie cette dépense à une ligne du budget pour le rapport bailleur
+                                </small>
+                            </div>
                         </div>
 
                         <div id="multiProjetDepenseSection" class="ventilation-section d-none">
@@ -1209,6 +1224,45 @@ function calculerTotauxExpert() {
         ecartSpan.className = 'badge bg-danger';
         ecartSpan.textContent = ecart.toLocaleString('fr-FR') + ' FCFA';
         btn.disabled = true;
+    }
+}
+
+// Lignes budgétaires par projet (pour suivi budget)
+const lignesBudgetParProjet = {
+    {% for projet in projets %}
+    "{{ projet.id }}": [
+        {% for ligne in lignes_budget if ligne.projet_id == projet.id %}
+        { id: "{{ ligne.id }}", code: "{{ ligne.code }}", intitule: "{{ ligne.intitule|e }}", montant: {{ ligne.montant_prevu or 0 }} },
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+// Mettre à jour les lignes budgétaires selon le projet sélectionné
+function updateLignesBudget(formType) {
+    const projetSelect = document.getElementById('projet' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    const ligneBudgetContainer = document.getElementById('ligneBudget' + formType.charAt(0).toUpperCase() + formType.slice(1) + 'Container');
+    const ligneBudgetSelect = document.getElementById('ligneBudget' + formType.charAt(0).toUpperCase() + formType.slice(1));
+
+    const projetId = projetSelect.value;
+
+    // Vider le select
+    ligneBudgetSelect.innerHTML = '<option value="">-- Sélectionner une ligne --</option>';
+
+    if (projetId && lignesBudgetParProjet[projetId] && lignesBudgetParProjet[projetId].length > 0) {
+        // Afficher le conteneur
+        ligneBudgetContainer.style.display = 'block';
+
+        // Ajouter les options
+        lignesBudgetParProjet[projetId].forEach(ligne => {
+            const option = document.createElement('option');
+            option.value = ligne.id;
+            option.textContent = ligne.code + ' - ' + ligne.intitule + ' (' + ligne.montant.toLocaleString('fr-FR') + ' FCFA)';
+            ligneBudgetSelect.appendChild(option);
+        });
+    } else {
+        // Masquer si pas de lignes budgétaires
+        ligneBudgetContainer.style.display = 'none';
     }
 }
 

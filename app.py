@@ -1444,15 +1444,17 @@ def nouvelle_ecriture():
                 # Dépense: Débit charge (6xx), Crédit trésorerie (5xx)
                 compte_charge_id = request.form.get('compte_charge')
                 compte_tresorerie_id = request.form.get('compte_tresorerie')
+                ligne_budget_id = request.form.get('ligne_budget_id') or None
 
-                # Ligne débit (charge)
+                # Ligne débit (charge) - avec ligne budgétaire pour suivi budget
                 ligne_debit = LigneEcriture(
                     piece_id=piece.id,
                     compte_id=compte_charge_id,
                     projet_id=projet_id,
                     libelle=libelle,
                     debit=montant,
-                    credit=0
+                    credit=0,
+                    ligne_budget_id=ligne_budget_id
                 )
                 db.session.add(ligne_debit)
                 db.session.flush()
@@ -1731,12 +1733,16 @@ def nouvelle_ecriture():
             flash(f'Écriture {numero} créée avec succès', 'success')
             return redirect(url_for('liste_ecritures'))
 
+    # Charger les lignes budgétaires pour le suivi budget
+    lignes_budget = LigneBudget.query.join(Projet).filter(Projet.statut == 'actif').all()
+
     return render_template('comptabilite/ecriture_form.html',
                          journaux=journaux,
                          exercices=exercices,
                          comptes=comptes,
                          projets=projets,
                          devises=devises,
+                         lignes_budget=lignes_budget,
                          today=date.today().strftime('%Y-%m-%d'))
 
 
