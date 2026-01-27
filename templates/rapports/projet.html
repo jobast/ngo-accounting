@@ -14,10 +14,10 @@
         <h2><i class="bi bi-file-earmark-bar-graph me-2"></i>Rapport Bailleur</h2>
     </div>
     <div class="btn-group">
-        <a href="{{ url_for('export_projet_pdf', id=projet.id) }}" class="btn btn-outline-danger">
+        <a href="{{ url_for('export_projet_pdf', id=projet.id, periode=periode, annee=annee, trimestre=trimestre, mois=mois, date_debut=date_debut, date_fin=date_fin, categorie_id=categorie_id, ligne_budget_id=ligne_budget_id) }}" class="btn btn-outline-danger">
             <i class="bi bi-file-pdf me-1"></i>PDF
         </a>
-        <a href="{{ url_for('export_projet_excel', id=projet.id) }}" class="btn btn-outline-success">
+        <a href="{{ url_for('export_projet_excel', id=projet.id, periode=periode, annee=annee, trimestre=trimestre, mois=mois, date_debut=date_debut, date_fin=date_fin, categorie_id=categorie_id, ligne_budget_id=ligne_budget_id) }}" class="btn btn-outline-success">
             <i class="bi bi-file-excel me-1"></i>Excel
         </a>
         <button onclick="window.print()" class="btn btn-outline-primary">
@@ -25,6 +25,128 @@
         </button>
     </div>
 </div>
+
+<!-- Panneau de filtres -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-funnel me-2"></i>Filtres du rapport
+    </div>
+    <div class="card-body">
+        <form method="GET" id="reportFilters">
+            <div class="row g-3">
+                <!-- Filtre Section budgétaire -->
+                <div class="col-md-3">
+                    <label class="form-label">Section budgétaire</label>
+                    <select name="categorie_id" class="form-select" id="categorieSelect" onchange="updateLigneOptions()">
+                        <option value="">Toutes les sections</option>
+                        {% for cat in categories_all %}
+                        <option value="{{ cat.id }}" {% if categorie_id == cat.id %}selected{% endif %}>
+                            {{ cat.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filtre Ligne budgétaire -->
+                <div class="col-md-3">
+                    <label class="form-label">Ligne budgétaire</label>
+                    <select name="ligne_budget_id" class="form-select" id="ligneBudgetSelect">
+                        <option value="">Toutes les lignes</option>
+                        {% for ligne in projet.lignes_budget %}
+                        <option value="{{ ligne.id }}" data-categorie="{{ ligne.categorie_id }}"
+                                {% if ligne_budget_id == ligne.id %}selected{% endif %}>
+                            {{ ligne.code }} - {{ ligne.intitule }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filtre Période -->
+                <div class="col-md-2">
+                    <label class="form-label">Période</label>
+                    <select name="periode" class="form-select" id="periodeSelect" onchange="togglePeriodFields()">
+                        <option value="all" {% if periode == 'all' %}selected{% endif %}>Tout</option>
+                        <option value="year" {% if periode == 'year' %}selected{% endif %}>Année</option>
+                        <option value="quarter" {% if periode == 'quarter' %}selected{% endif %}>Trimestre</option>
+                        <option value="month" {% if periode == 'month' %}selected{% endif %}>Mois</option>
+                        <option value="custom" {% if periode == 'custom' %}selected{% endif %}>Personnalisé</option>
+                    </select>
+                </div>
+
+                <!-- Année -->
+                <div class="col-md-2" id="yearField">
+                    <label class="form-label">Année</label>
+                    <select name="annee" class="form-select">
+                        {% for y in annees_disponibles %}
+                        <option value="{{ y }}" {% if annee == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Trimestre (caché par défaut) -->
+                <div class="col-md-2" id="quarterField" style="display:none;">
+                    <label class="form-label">Trimestre</label>
+                    <select name="trimestre" class="form-select">
+                        <option value="1" {% if trimestre == 1 %}selected{% endif %}>T1 (Jan-Mar)</option>
+                        <option value="2" {% if trimestre == 2 %}selected{% endif %}>T2 (Avr-Jun)</option>
+                        <option value="3" {% if trimestre == 3 %}selected{% endif %}>T3 (Jul-Sep)</option>
+                        <option value="4" {% if trimestre == 4 %}selected{% endif %}>T4 (Oct-Déc)</option>
+                    </select>
+                </div>
+
+                <!-- Mois (caché par défaut) -->
+                <div class="col-md-2" id="monthField" style="display:none;">
+                    <label class="form-label">Mois</label>
+                    <select name="mois" class="form-select">
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if mois == m %}selected{% endif %}>{{ mois_noms[m] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dates personnalisées (caché par défaut) -->
+            <div class="row g-3 mt-2" id="customDateFields" style="display:none;">
+                <div class="col-md-3">
+                    <label class="form-label">Du</label>
+                    <input type="date" name="date_debut" class="form-control" value="{{ date_debut }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Au</label>
+                    <input type="date" name="date_fin" class="form-control" value="{{ date_fin }}">
+                </div>
+            </div>
+
+            <!-- Boutons -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel me-2"></i>Appliquer les filtres
+                    </button>
+                    <a href="{{ url_for('rapport_projet', id=projet.id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Réinitialiser
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Indicateur de filtres actifs -->
+{% if periode != 'all' or categorie_id or ligne_budget_id %}
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <div>
+        <i class="bi bi-funnel-fill me-2"></i>
+        <strong>Filtres actifs:</strong>
+        {% if periode_label and periode_label != 'Toute la période' %}{{ periode_label }}{% endif %}
+        {% if categorie_nom %} | Section: {{ categorie_nom }}{% endif %}
+        {% if ligne_nom %} | Ligne: {{ ligne_nom }}{% endif %}
+    </div>
+    <a href="{{ url_for('rapport_projet', id=projet.id) }}" class="btn btn-sm btn-outline-info">
+        Effacer les filtres
+    </a>
+</div>
+{% endif %}
 
 <!-- En-tête du rapport -->
 <div class="card mb-4">
@@ -185,6 +307,66 @@
     .card-header { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
     .table-dark { background: #333 !important; color: white !important; -webkit-print-color-adjust: exact; }
     .progress-bar { -webkit-print-color-adjust: exact; }
+    /* Hide filter panel in print */
+    #reportFilters, .alert-info { display: none !important; }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePeriodFields() {
+    const periode = document.getElementById('periodeSelect').value;
+    const yearField = document.getElementById('yearField');
+    const quarterField = document.getElementById('quarterField');
+    const monthField = document.getElementById('monthField');
+    const customDateFields = document.getElementById('customDateFields');
+
+    // Hide all optional fields first
+    quarterField.style.display = 'none';
+    monthField.style.display = 'none';
+    customDateFields.style.display = 'none';
+
+    // Show/hide year field
+    if (periode === 'all') {
+        yearField.style.display = 'none';
+    } else if (periode === 'custom') {
+        yearField.style.display = 'none';
+        customDateFields.style.display = 'flex';
+    } else {
+        yearField.style.display = 'block';
+    }
+
+    // Show quarter or month field based on selection
+    if (periode === 'quarter') {
+        quarterField.style.display = 'block';
+    } else if (periode === 'month') {
+        monthField.style.display = 'block';
+    }
+}
+
+function updateLigneOptions() {
+    const categorieId = document.getElementById('categorieSelect').value;
+    const ligneSelect = document.getElementById('ligneBudgetSelect');
+    const options = ligneSelect.querySelectorAll('option[data-categorie]');
+
+    options.forEach(option => {
+        if (!categorieId || option.dataset.categorie === categorieId) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+            // If the hidden option was selected, reset selection
+            if (option.selected) {
+                ligneSelect.value = '';
+            }
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    togglePeriodFields();
+    updateLigneOptions();
+});
+</script>
 {% endblock %}

@@ -175,7 +175,7 @@
                 <td>{{ projet.bailleur.nom if projet.bailleur else 'Non défini' }}</td>
             </tr>
             <tr>
-                <td class="label">Période:</td>
+                <td class="label">Période projet:</td>
                 <td>
                     {% if projet.date_debut %}
                         {{ projet.date_debut.strftime('%d/%m/%Y') }} -
@@ -187,6 +187,26 @@
                 <td class="label">Devise:</td>
                 <td>{{ projet.devise.code if projet.devise else 'XOF' }}</td>
             </tr>
+            <tr>
+                <td class="label">Période du rapport:</td>
+                <td colspan="3">
+                    {% if periode_label and periode_label != 'Toute la période' %}
+                        <strong>{{ periode_label }}</strong>
+                    {% else %}
+                        Toute la période du projet
+                    {% endif %}
+                </td>
+            </tr>
+            {% if categorie_nom or ligne_nom %}
+            <tr>
+                <td class="label">Filtres:</td>
+                <td colspan="3">
+                    {% if categorie_nom %}Section: <strong>{{ categorie_nom }}</strong>{% endif %}
+                    {% if categorie_nom and ligne_nom %} | {% endif %}
+                    {% if ligne_nom %}Ligne: <strong>{{ ligne_nom }}</strong>{% endif %}
+                </td>
+            </tr>
+            {% endif %}
         </table>
     </div>
 

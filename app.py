@@ -3804,20 +3804,120 @@ def balance_generale():
     return render_template('rapports/balance.html', balance=balance, exercices=exercices, exercice_id=exercice_id)
 
 
-@app.route('/rapports/projet/<int:id>')
-@login_required
-def rapport_projet(id):
-    """Rapport bailleur - Budget vs Réalisé"""
-    projet = Projet.query.get_or_404(id)
+# =============================================================================
+# HELPER FUNCTIONS FOR REPORTS
+# =============================================================================
+
+MOIS_NOMS = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+
+def get_periode_label(periode, annee, trimestre, mois, date_debut, date_fin):
+    """Génère un label lisible pour la période"""
+    if periode == 'year' and annee:
+        return f"Année {annee}"
+    elif periode == 'quarter' and annee and trimestre:
+        return f"T{trimestre} {annee}"
+    elif periode == 'month' and annee and mois:
+        return f"{MOIS_NOMS[mois]} {annee}"
+    elif periode == 'custom' and date_debut and date_fin:
+        return f"{date_debut.strftime('%d/%m/%Y')} - {date_fin.strftime('%d/%m/%Y')}"
+    return "Toute la période"
+
+
+def get_categorie_nom(categorie_id):
+    """Retourne le nom d'une catégorie à partir de son ID"""
+    if categorie_id:
+        cat = CategorieBudget.query.get(categorie_id)
+        return cat.nom if cat else None
+    return None
+
+
+def get_ligne_nom(ligne_budget_id):
+    """Retourne le nom d'une ligne budgétaire à partir de son ID"""
+    if ligne_budget_id:
+        ligne = LigneBudget.query.get(ligne_budget_id)
+        return f"{ligne.code} - {ligne.intitule}" if ligne else None
+    return None
+
+
+def parse_report_filters():
+    """Parse common report filters from request args"""
+    # Filtre période
+    periode = request.args.get('periode', 'all')  # all, year, quarter, month, custom
+    annee = request.args.get('annee', type=int)
+    trimestre = request.args.get('trimestre', type=int)  # 1, 2, 3, 4
+    mois = request.args.get('mois', type=int)
+    date_debut_str = request.args.get('date_debut')
+    date_fin_str = request.args.get('date_fin')
+
+    # Filtre section (catégorie budgétaire)
+    categorie_id = request.args.get('categorie_id', type=int)
+
+    # Filtre ligne budgétaire spécifique
+    ligne_budget_id = request.args.get('ligne_budget_id', type=int)
+
+    # Calculer les dates de filtre
+    date_filter_start, date_filter_end = None, None
+    annee = annee or datetime.now().year  # Défaut: année courante
+
+    if periode == 'year':
+        date_filter_start = date(annee, 1, 1)
+        date_filter_end = date(annee, 12, 31)
+    elif periode == 'quarter' and trimestre:
+        mois_debut = (trimestre - 1) * 3 + 1
+        date_filter_start = date(annee, mois_debut, 1)
+        mois_fin = mois_debut + 2
+        if mois_fin == 12:
+            date_filter_end = date(annee, 12, 31)
+        else:
+            date_filter_end = date(annee, mois_fin + 1, 1) - timedelta(days=1)
+    elif periode == 'month' and mois:
+        date_filter_start = date(annee, mois, 1)
+        if mois == 12:
+            date_filter_end = date(annee, 12, 31)
+        else:
+            date_filter_end = date(annee, mois + 1, 1) - timedelta(days=1)
+    elif periode == 'custom' and date_debut_str and date_fin_str:
+        try:
+            date_filter_start = datetime.strptime(date_debut_str, '%Y-%m-%d').date()
+            date_filter_end = datetime.strptime(date_fin_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass  # Ignore invalid date format
+
+    return {
+        'periode': periode,
+        'annee': annee,
+        'trimestre': trimestre,
+        'mois': mois,
+        'date_debut_str': date_debut_str,
+        'date_fin_str': date_fin_str,
+        'categorie_id': categorie_id,
+        'ligne_budget_id': ligne_budget_id,
+        'date_filter_start': date_filter_start,
+        'date_filter_end': date_filter_end
+    }
+
+
+def calculate_rapport_data(projet, filters):
+    """Calculate report data with filters applied"""
     categories = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
 
-    # Organiser les données par catégorie
+    # Filtrer les catégories si une catégorie spécifique est demandée
+    if filters['categorie_id']:
+        categories = [c for c in categories if c.id == filters['categorie_id']]
+
     rapport = []
     total_prevu = 0
     total_realise = 0
 
     for cat in categories:
         lignes_cat = [l for l in projet.lignes_budget if l.categorie_id == cat.id]
+
+        # Si filtre ligne spécifique, ne garder que cette ligne
+        if filters['ligne_budget_id']:
+            lignes_cat = [l for l in lignes_cat if l.id == filters['ligne_budget_id']]
+
         if not lignes_cat:
             continue
 
@@ -3829,15 +3929,32 @@ def rapport_projet(id):
         }
 
         for ligne in lignes_cat:
-            # SYSCOHADA: Pour les charges (classe 6), seuls les débits comptent comme dépenses réalisées
-            realise = db.session.query(
+            # Requête réalisé avec jointure PieceComptable pour filtrer par date
+            query = db.session.query(
                 db.func.sum(LigneEcriture.debit)
-            ).join(CompteComptable).filter(
+            ).join(CompteComptable).join(
+                PieceComptable, LigneEcriture.piece_id == PieceComptable.id
+            ).filter(
                 (LigneEcriture.ligne_budget_id == ligne.id) &
                 (CompteComptable.classe == 6)
-            ).scalar() or 0
+            )
+
+            # Appliquer filtre de date si spécifié
+            if filters['date_filter_start'] and filters['date_filter_end']:
+                query = query.filter(
+                    PieceComptable.date_piece >= filters['date_filter_start'],
+                    PieceComptable.date_piece <= filters['date_filter_end']
+                )
+
+            realise = query.scalar() or 0
             realise = float(realise)
+
+            # Si filtre par année et BudgetAnnee existe, utiliser le montant annuel
             prevu = float(ligne.montant_prevu or 0)
+            if filters['periode'] == 'year' and filters['annee']:
+                budget_annee = ligne.get_montant_annee(filters['annee'])
+                if budget_annee > 0:
+                    prevu = float(budget_annee)
 
             cat_data['lignes'].append({
                 'ligne': ligne,
@@ -3853,17 +3970,66 @@ def rapport_projet(id):
         total_realise += cat_data['total_realise']
         rapport.append(cat_data)
 
+    return rapport, total_prevu, total_realise
+
+
+@app.route('/rapports/projet/<int:id>')
+@login_required
+def rapport_projet(id):
+    """Rapport bailleur - Budget vs Réalisé avec filtres"""
+    projet = Projet.query.get_or_404(id)
+
+    # Parse filters
+    filters = parse_report_filters()
+
+    # Calculate report data
+    rapport, total_prevu, total_realise = calculate_rapport_data(projet, filters)
+
+    # Get all categories for filter dropdown
+    categories_all = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
+
+    # Calculate available years for filter
+    current_year = datetime.now().year
+    annee_debut = projet.date_debut.year if projet.date_debut else current_year - 2
+    annee_fin = projet.date_fin.year if projet.date_fin else current_year + 2
+    annees_disponibles = list(range(annee_debut, annee_fin + 1))
+
+    # Generate labels for active filters display
+    periode_label = get_periode_label(
+        filters['periode'], filters['annee'], filters['trimestre'],
+        filters['mois'], filters['date_filter_start'], filters['date_filter_end']
+    )
+    categorie_nom = get_categorie_nom(filters['categorie_id'])
+    ligne_nom = get_ligne_nom(filters['ligne_budget_id'])
+
     return render_template('rapports/projet.html',
-                         projet=projet,
-                         rapport=rapport,
-                         total_prevu=total_prevu,
-                         total_realise=total_realise)
+                          projet=projet,
+                          rapport=rapport,
+                          total_prevu=total_prevu,
+                          total_realise=total_realise,
+                          # Filter options
+                          categories_all=categories_all,
+                          annees_disponibles=annees_disponibles,
+                          mois_noms=MOIS_NOMS,
+                          # Current filter values
+                          periode=filters['periode'],
+                          annee=filters['annee'],
+                          trimestre=filters['trimestre'],
+                          mois=filters['mois'],
+                          date_debut=filters['date_debut_str'] or '',
+                          date_fin=filters['date_fin_str'] or '',
+                          categorie_id=filters['categorie_id'],
+                          ligne_budget_id=filters['ligne_budget_id'],
+                          # Labels for display
+                          periode_label=periode_label,
+                          categorie_nom=categorie_nom,
+                          ligne_nom=ligne_nom)
 
 
 @app.route('/rapports/projet/<int:id>/pdf')
 @login_required
 def export_projet_pdf(id):
-    """Export PDF du rapport bailleur"""
+    """Export PDF du rapport bailleur avec filtres"""
     try:
         from xhtml2pdf import pisa
         from io import BytesIO
@@ -3872,55 +4038,32 @@ def export_projet_pdf(id):
         return redirect(url_for('rapport_projet', id=id))
 
     projet = Projet.query.get_or_404(id)
-    categories = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
 
-    # Mêmes calculs que rapport_projet
-    rapport = []
-    total_prevu = 0
-    total_realise = 0
+    # Parse filters (same as rapport_projet)
+    filters = parse_report_filters()
 
-    for cat in categories:
-        lignes_cat = [l for l in projet.lignes_budget if l.categorie_id == cat.id]
-        if not lignes_cat:
-            continue
+    # Calculate report data with filters
+    rapport, total_prevu, total_realise = calculate_rapport_data(projet, filters)
 
-        cat_data = {
-            'categorie': cat,
-            'lignes': [],
-            'total_prevu': 0,
-            'total_realise': 0
-        }
-
-        for ligne in lignes_cat:
-            realise = db.session.query(
-                db.func.sum(LigneEcriture.debit)
-            ).join(CompteComptable).filter(
-                (LigneEcriture.ligne_budget_id == ligne.id) &
-                (CompteComptable.classe == 6)
-            ).scalar() or 0
-            realise = float(realise)
-            prevu = float(ligne.montant_prevu or 0)
-
-            cat_data['lignes'].append({
-                'ligne': ligne,
-                'prevu': prevu,
-                'realise': realise,
-                'ecart': prevu - realise,
-                'taux': (realise / prevu * 100) if prevu > 0 else 0
-            })
-            cat_data['total_prevu'] += prevu
-            cat_data['total_realise'] += realise
-
-        total_prevu += cat_data['total_prevu']
-        total_realise += cat_data['total_realise']
-        rapport.append(cat_data)
+    # Generate labels for filter display in PDF
+    periode_label = get_periode_label(
+        filters['periode'], filters['annee'], filters['trimestre'],
+        filters['mois'], filters['date_filter_start'], filters['date_filter_end']
+    )
+    categorie_nom = get_categorie_nom(filters['categorie_id'])
+    ligne_nom = get_ligne_nom(filters['ligne_budget_id'])
 
     html = render_template('rapports/projet_pdf.html',
                           projet=projet,
                           rapport=rapport,
                           total_prevu=total_prevu,
                           total_realise=total_realise,
-                          date_generation=datetime.now())
+                          date_generation=datetime.now(),
+                          # Filter info for display
+                          periode=filters['periode'],
+                          periode_label=periode_label,
+                          categorie_nom=categorie_nom,
+                          ligne_nom=ligne_nom)
 
     try:
         pdf_buffer = BytesIO()
@@ -3933,15 +4076,24 @@ def export_projet_pdf(id):
         flash(f"Erreur lors de la génération PDF: {str(e)}", "danger")
         return redirect(url_for('rapport_projet', id=id))
 
+    # Generate filename with filter info
+    filename_suffix = ''
+    if filters['periode'] == 'year' and filters['annee']:
+        filename_suffix = f"_{filters['annee']}"
+    elif filters['periode'] == 'quarter' and filters['annee'] and filters['trimestre']:
+        filename_suffix = f"_{filters['annee']}-T{filters['trimestre']}"
+    elif filters['periode'] == 'month' and filters['annee'] and filters['mois']:
+        filename_suffix = f"_{filters['annee']}-{filters['mois']:02d}"
+
     return Response(pdf_buffer.getvalue(),
                    mimetype='application/pdf',
-                   headers={'Content-Disposition': f'attachment; filename=rapport_{projet.code}_{date.today()}.pdf'})
+                   headers={'Content-Disposition': f'attachment; filename=rapport_{projet.code}{filename_suffix}_{date.today()}.pdf'})
 
 
 @app.route('/rapports/projet/<int:id>/excel')
 @login_required
 def export_projet_excel(id):
-    """Export Excel du rapport bailleur"""
+    """Export Excel du rapport bailleur avec filtres"""
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -3951,7 +4103,20 @@ def export_projet_excel(id):
         return redirect(url_for('rapport_projet', id=id))
 
     projet = Projet.query.get_or_404(id)
-    categories = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
+
+    # Parse filters (same as rapport_projet)
+    filters = parse_report_filters()
+
+    # Calculate report data with filters
+    rapport, total_prevu, total_realise = calculate_rapport_data(projet, filters)
+
+    # Generate labels for filter display
+    periode_label = get_periode_label(
+        filters['periode'], filters['annee'], filters['trimestre'],
+        filters['mois'], filters['date_filter_start'], filters['date_filter_end']
+    )
+    categorie_nom = get_categorie_nom(filters['categorie_id'])
+    ligne_nom = get_ligne_nom(filters['ligne_budget_id'])
 
     wb = Workbook()
     ws = wb.active
@@ -3961,6 +4126,7 @@ def export_projet_excel(id):
     header_font = Font(bold=True, size=12)
     title_font = Font(bold=True, size=14)
     cat_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    info_fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
     thin_border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
@@ -3977,22 +4143,41 @@ def export_projet_excel(id):
     ws['A3'] = f"Bailleur: {projet.bailleur.nom if projet.bailleur else 'N/A'}"
     ws['A4'] = f"Date: {date.today().strftime('%d/%m/%Y')}"
 
+    # Afficher les filtres actifs
+    row = 5
+    if filters['periode'] != 'all' or filters['categorie_id'] or filters['ligne_budget_id']:
+        ws['A5'] = "Filtres appliqués:"
+        ws['A5'].font = Font(bold=True)
+        ws['A5'].fill = info_fill
+
+        filter_parts = []
+        if periode_label and periode_label != "Toute la période":
+            filter_parts.append(f"Période: {periode_label}")
+        if categorie_nom:
+            filter_parts.append(f"Section: {categorie_nom}")
+        if ligne_nom:
+            filter_parts.append(f"Ligne: {ligne_nom}")
+
+        ws['B5'] = " | ".join(filter_parts)
+        ws['B5'].fill = info_fill
+        for col in range(1, 7):
+            ws.cell(row=5, column=col).fill = info_fill
+        row = 7
+    else:
+        row = 6
+
     # En-têtes tableau
-    row = 6
     headers = ['Code', 'Description', 'Budget prévu', 'Réalisé', 'Écart', 'Taux (%)']
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=row, column=col, value=header)
         cell.font = header_font
         cell.border = thin_border
 
-    row = 7
-    total_prevu = 0
-    total_realise = 0
+    row += 1
 
-    for cat in categories:
-        lignes_cat = [l for l in projet.lignes_budget if l.categorie_id == cat.id]
-        if not lignes_cat:
-            continue
+    # Données du rapport (déjà filtrées)
+    for cat_data in rapport:
+        cat = cat_data['categorie']
 
         # Ligne catégorie
         ws.cell(row=row, column=1, value=cat.nom).font = Font(bold=True)
@@ -4002,19 +4187,11 @@ def export_projet_excel(id):
             ws.cell(row=row, column=col).border = thin_border
         row += 1
 
-        cat_prevu = 0
-        cat_realise = 0
-
-        for ligne in lignes_cat:
-            realise = db.session.query(
-                db.func.sum(LigneEcriture.debit)
-            ).join(CompteComptable).filter(
-                (LigneEcriture.ligne_budget_id == ligne.id) &
-                (CompteComptable.classe == 6)
-            ).scalar() or 0
-            realise = float(realise)
-            prevu = float(ligne.montant_prevu or 0)
-            taux = (realise / prevu * 100) if prevu > 0 else 0
+        for item in cat_data['lignes']:
+            ligne = item['ligne']
+            prevu = item['prevu']
+            realise = item['realise']
+            taux = item['taux'] / 100  # Convert to decimal for Excel percentage format
 
             ws.cell(row=row, column=1, value=ligne.code).border = thin_border
             ws.cell(row=row, column=2, value=ligne.intitule).border = thin_border
@@ -4027,12 +4204,7 @@ def export_projet_excel(id):
             ws.cell(row=row, column=6, value=taux).border = thin_border
             ws.cell(row=row, column=6).number_format = '0.0%'
 
-            cat_prevu += prevu
-            cat_realise += realise
             row += 1
-
-        total_prevu += cat_prevu
-        total_realise += cat_realise
 
     # Total général
     row += 1
@@ -4055,14 +4227,45 @@ def export_projet_excel(id):
     ws.column_dimensions['E'].width = 15
     ws.column_dimensions['F'].width = 12
 
+    # Ajouter une feuille "Critères" avec les détails des filtres
+    if filters['periode'] != 'all' or filters['categorie_id'] or filters['ligne_budget_id']:
+        ws_criteres = wb.create_sheet(title="Critères")
+        ws_criteres['A1'] = "Critères de filtrage du rapport"
+        ws_criteres['A1'].font = title_font
+
+        ws_criteres['A3'] = "Projet:"
+        ws_criteres['B3'] = projet.nom
+        ws_criteres['A4'] = "Code:"
+        ws_criteres['B4'] = projet.code
+        ws_criteres['A5'] = "Période du rapport:"
+        ws_criteres['B5'] = periode_label if periode_label else "Toute la période"
+        ws_criteres['A6'] = "Section budgétaire:"
+        ws_criteres['B6'] = categorie_nom if categorie_nom else "Toutes les sections"
+        ws_criteres['A7'] = "Ligne budgétaire:"
+        ws_criteres['B7'] = ligne_nom if ligne_nom else "Toutes les lignes"
+        ws_criteres['A8'] = "Date de génération:"
+        ws_criteres['B8'] = datetime.now().strftime('%d/%m/%Y %H:%M')
+
+        ws_criteres.column_dimensions['A'].width = 25
+        ws_criteres.column_dimensions['B'].width = 50
+
     # Sauvegarder
     output = BytesIO()
     wb.save(output)
     output.seek(0)
 
+    # Generate filename with filter info
+    filename_suffix = ''
+    if filters['periode'] == 'year' and filters['annee']:
+        filename_suffix = f"_{filters['annee']}"
+    elif filters['periode'] == 'quarter' and filters['annee'] and filters['trimestre']:
+        filename_suffix = f"_{filters['annee']}-T{filters['trimestre']}"
+    elif filters['periode'] == 'month' and filters['annee'] and filters['mois']:
+        filename_suffix = f"_{filters['annee']}-{filters['mois']:02d}"
+
     return Response(output.read(),
                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                   headers={'Content-Disposition': f'attachment; filename=rapport_{projet.code}_{date.today()}.xlsx'})
+                   headers={'Content-Disposition': f'attachment; filename=rapport_{projet.code}{filename_suffix}_{date.today()}.xlsx'})
 
 
 @app.route('/rapports/reconciliation')
