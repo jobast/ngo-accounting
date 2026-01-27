@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Bons de Commande - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-file-text me-2"></i>Bons de Commande</h2>
+        <p class="text-muted mb-0">Liste des bons de commande émis</p>
+    </div>
+    <a href="{{ url_for('liste_demandes_achat') }}" class="btn btn-outline-primary">
+        <i class="bi bi-cart me-1"></i>Demandes d'achat
+    </a>
+</div>
+
+<!-- Filtres -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Statut</label>
+                <select name="statut" class="form-select">
+                    <option value="">Tous les statuts</option>
+                    <option value="emis" {% if statut_filtre == 'emis' %}selected{% endif %}>Émis</option>
+                    <option value="livre_partiel" {% if statut_filtre == 'livre_partiel' %}selected{% endif %}>Livré partiellement</option>
+                    <option value="livre" {% if statut_filtre == 'livre' %}selected{% endif %}>Livré</option>
+                    <option value="facture" {% if statut_filtre == 'facture' %}selected{% endif %}>Facturé</option>
+                    <option value="annule" {% if statut_filtre == 'annule' %}selected{% endif %}>Annulé</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-funnel me-1"></i>Filtrer
+                </button>
+            </div>
+            {% if statut_filtre %}
+            <div class="col-md-2">
+                <a href="{{ url_for('liste_bons_commande') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x me-1"></i>Réinitialiser
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Liste -->
+<div class="card">
+    <div class="card-body">
+        {% if bons %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Date</th>
+                        <th>Fournisseur</th>
+                        <th>Demande</th>
+                        <th class="text-end">Montant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bon in bons %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('detail_bon_commande', id=bon.id) }}" class="fw-bold text-decoration-none">
+                                {{ bon.numero }}
+                            </a>
+                        </td>
+                        <td>{{ bon.date_commande.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ bon.fournisseur.nom if bon.fournisseur else '-' }}</td>
+                        <td>
+                            {% if bon.demande_achat %}
+                            <a href="{{ url_for('detail_demande_achat', id=bon.demande_achat.id) }}">
+                                {{ bon.demande_achat.numero }}
+                            </a>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold">{{ "{:,.0f}".format(bon.montant_total) }} FCFA</td>
+                        <td>
+                            {% if bon.statut == 'emis' %}
+                            <span class="badge bg-primary">Émis</span>
+                            {% elif bon.statut == 'livre_partiel' %}
+                            <span class="badge bg-warning text-dark">Livré partiellement</span>
+                            {% elif bon.statut == 'livre' %}
+                            <span class="badge bg-success">Livré</span>
+                            {% elif bon.statut == 'facture' %}
+                            <span class="badge bg-info">Facturé</span>
+                            {% elif bon.statut == 'annule' %}
+                            <span class="badge bg-secondary">Annulé</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('detail_bon_commande', id=bon.id) }}" class="btn btn-outline-primary" title="Voir">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('pdf_bon_commande', id=bon.id) }}" class="btn btn-outline-danger" title="PDF" target="_blank">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-file-text fs-1"></i>
+            <p class="mt-3">Aucun bon de commande</p>
+            <a href="{{ url_for('liste_demandes_achat') }}" class="btn btn-primary">
+                <i class="bi bi-cart me-2"></i>Voir les demandes d'achat
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

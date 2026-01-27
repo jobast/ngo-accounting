@@ -40,6 +40,24 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 # Create upload folder if not exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# =============================================================================
+# ORGANIZATION INFO
+# =============================================================================
+ORG_INFO = {
+    'nom': 'GIE CREATES',
+    'nom_complet': 'Centre de Recherche-Action sur les Transformations Ecologiques et Sociales',
+    'adresse': 'Quartier Ngane, Ngaparou, derrière Sportand',
+    'ville': 'Département de Mbour',
+    'pays': 'Sénégal',
+    'site_web': 'www.creates.ngo',
+    'logo': 'static/img/logo.png'
+}
+
+# Make ORG_INFO available in all templates
+@app.context_processor
+def inject_org_info():
+    return {'org': ORG_INFO}
+
 db = SQLAlchemy(app)
 
 # SECURITY: Enable SQLite foreign key enforcement
@@ -843,6 +861,224 @@ class Fournisseur(db.Model):
 
 
 # =============================================================================
+# MODULES NOTES DE FRAIS & DEMANDES D'ACHAT
+# =============================================================================
+
+class NoteFrais(db.Model):
+    """Notes de frais employés - Expense Reports
+    Workflow: brouillon -> soumis -> approuve/rejete -> rembourse
+    """
+    __tablename__ = 'notes_frais'
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(20), unique=True, nullable=False)  # NF-2026-001
+    employe_id = db.Column(db.Integer, db.ForeignKey('utilisateurs.id'), nullable=False)
+    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'))
+    ligne_budget_id = db.Column(db.Integer, db.ForeignKey('lignes_budget.id'))
+    date_depense = db.Column(db.Date, nullable=False)
+    montant = db.Column(db.Numeric(15, 2), nullable=False)
+    categorie = db.Column(db.String(50), nullable=False)  # transport, repas, fournitures, hebergement, communication, autre
+    description = db.Column(db.Text, nullable=False)
+    justificatif = db.Column(db.String(255))  # chemin fichier uploadé
+    statut = db.Column(db.String(20), default='brouillon')  # brouillon, soumis, approuve, rejete, rembourse
+    date_soumission = db.Column(db.DateTime)
+    validateur_id = db.Column(db.Integer, db.ForeignKey('utilisateurs.id'))
+    date_validation = db.Column(db.DateTime)
+    motif_rejet = db.Column(db.Text)
+    piece_comptable_id = db.Column(db.Integer, db.ForeignKey('pieces.id'))
+    a_rembourser = db.Column(db.Boolean, default=True)
+    date_remboursement = db.Column(db.DateTime)
+    cree_par = db.Column(db.String(100))
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    employe = db.relationship('Utilisateur', foreign_keys=[employe_id], backref='notes_frais')
+    validateur = db.relationship('Utilisateur', foreign_keys=[validateur_id])
+    projet = db.relationship('Projet')
+    ligne_budget = db.relationship('LigneBudget')
+    piece_comptable = db.relationship('PieceComptable')
+
+    # Catégories de dépenses
+    CATEGORIES = [
+        ('transport', 'Transport'),
+        ('repas', 'Repas & Restauration'),
+        ('hebergement', 'Hébergement'),
+        ('fournitures', 'Fournitures de bureau'),
+        ('communication', 'Communication & Téléphone'),
+        ('autre', 'Autre')
+    ]
+
+    def __repr__(self):
+        return f'<NoteFrais {self.numero} {self.montant}>'
+
+    @property
+    def est_modifiable(self):
+        return self.statut in ['brouillon', 'rejete']
+
+    @property
+    def peut_soumettre(self):
+        return self.statut in ['brouillon', 'rejete']
+
+    @property
+    def peut_approuver(self):
+        return self.statut == 'soumis'
+
+
+class DemandeAchat(db.Model):
+    """Demandes d'achat avec workflow d'approbation
+    Workflow: brouillon -> soumis -> approuve/rejete -> commande
+    """
+    __tablename__ = 'demandes_achat'
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(20), unique=True, nullable=False)  # DA-2026-001
+    demandeur_id = db.Column(db.Integer, db.ForeignKey('utilisateurs.id'), nullable=False)
+    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'))
+    ligne_budget_id = db.Column(db.Integer, db.ForeignKey('lignes_budget.id'))
+    date_demande = db.Column(db.Date, nullable=False)
+    objet = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    montant_estime = db.Column(db.Numeric(15, 2), default=0)
+    urgence = db.Column(db.String(20), default='normal')  # normal, urgent, tres_urgent
+    statut = db.Column(db.String(20), default='brouillon')  # brouillon, soumis, approuve, rejete, commande
+    approbateur_id = db.Column(db.Integer, db.ForeignKey('utilisateurs.id'))
+    date_approbation = db.Column(db.DateTime)
+    motif_rejet = db.Column(db.Text)
+    bon_commande_id = db.Column(db.Integer, db.ForeignKey('bons_commande.id'))
+    date_soumission = db.Column(db.DateTime)
+    cree_par = db.Column(db.String(100))
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Seuil d'approbation: en dessous = comptable, au dessus = directeur
+    SEUIL_APPROBATION_DIRECTEUR = 500000  # 500,000 FCFA
+
+    # Relations
+    demandeur = db.relationship('Utilisateur', foreign_keys=[demandeur_id], backref='demandes_achat')
+    approbateur = db.relationship('Utilisateur', foreign_keys=[approbateur_id])
+    projet = db.relationship('Projet')
+    ligne_budget = db.relationship('LigneBudget')
+    lignes = db.relationship('LigneDemandeAchat', back_populates='demande', cascade='all, delete-orphan')
+    bon_commande = db.relationship('BonCommande', foreign_keys=[bon_commande_id])
+
+    # Niveaux d'urgence
+    URGENCES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('tres_urgent', 'Très urgent')
+    ]
+
+    def __repr__(self):
+        return f'<DemandeAchat {self.numero} {self.objet}>'
+
+    @property
+    def montant_total(self):
+        return sum(float(l.montant_total or 0) for l in self.lignes)
+
+    @property
+    def est_modifiable(self):
+        return self.statut in ['brouillon', 'rejete']
+
+    @property
+    def peut_soumettre(self):
+        return self.statut in ['brouillon', 'rejete'] and len(self.lignes) > 0
+
+    @property
+    def peut_approuver(self):
+        return self.statut == 'soumis'
+
+    @property
+    def necessite_approbation_directeur(self):
+        return self.montant_total >= self.SEUIL_APPROBATION_DIRECTEUR
+
+
+class LigneDemandeAchat(db.Model):
+    """Lignes d'une demande d'achat"""
+    __tablename__ = 'lignes_demande_achat'
+
+    id = db.Column(db.Integer, primary_key=True)
+    demande_id = db.Column(db.Integer, db.ForeignKey('demandes_achat.id'), nullable=False)
+    designation = db.Column(db.String(200), nullable=False)
+    quantite = db.Column(db.Numeric(10, 2), default=1)
+    unite = db.Column(db.String(20), default='pièce')  # pièce, kg, litre, forfait, mois
+    prix_unitaire_estime = db.Column(db.Numeric(15, 2), default=0)
+
+    # Relations
+    demande = db.relationship('DemandeAchat', back_populates='lignes')
+
+    # Unités disponibles
+    UNITES = [
+        ('piece', 'Pièce'),
+        ('kg', 'Kilogramme'),
+        ('litre', 'Litre'),
+        ('forfait', 'Forfait'),
+        ('mois', 'Mois'),
+        ('jour', 'Jour'),
+        ('heure', 'Heure')
+    ]
+
+    def __repr__(self):
+        return f'<LigneDemandeAchat {self.designation} x{self.quantite}>'
+
+    @property
+    def montant_total(self):
+        return float(self.quantite or 0) * float(self.prix_unitaire_estime or 0)
+
+
+class BonCommande(db.Model):
+    """Bons de commande générés à partir des demandes approuvées"""
+    __tablename__ = 'bons_commande'
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(20), unique=True, nullable=False)  # BC-2026-001
+    demande_achat_id = db.Column(db.Integer, db.ForeignKey('demandes_achat.id'))
+    fournisseur_id = db.Column(db.Integer, db.ForeignKey('fournisseurs.id'))
+    date_commande = db.Column(db.Date, nullable=False)
+    date_livraison_prevue = db.Column(db.Date)
+    statut = db.Column(db.String(20), default='emis')  # emis, livre_partiel, livre, facture, annule
+    montant_total = db.Column(db.Numeric(15, 2), default=0)
+    conditions_paiement = db.Column(db.String(100))
+    adresse_livraison = db.Column(db.String(255))
+    notes = db.Column(db.Text)
+    cree_par = db.Column(db.String(100))
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    demande_achat = db.relationship('DemandeAchat', foreign_keys=[demande_achat_id], backref='bons_commande_generes')
+    fournisseur = db.relationship('Fournisseur')
+    lignes = db.relationship('LigneBonCommande', back_populates='bon_commande', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<BonCommande {self.numero}>'
+
+    @property
+    def est_modifiable(self):
+        return self.statut == 'emis'
+
+
+class LigneBonCommande(db.Model):
+    """Lignes d'un bon de commande"""
+    __tablename__ = 'lignes_bon_commande'
+
+    id = db.Column(db.Integer, primary_key=True)
+    bon_commande_id = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), nullable=False)
+    designation = db.Column(db.String(200), nullable=False)
+    quantite = db.Column(db.Numeric(10, 2), default=1)
+    unite = db.Column(db.String(20), default='pièce')
+    prix_unitaire = db.Column(db.Numeric(15, 2), default=0)
+    quantite_livree = db.Column(db.Numeric(10, 2), default=0)
+
+    # Relations
+    bon_commande = db.relationship('BonCommande', back_populates='lignes')
+
+    def __repr__(self):
+        return f'<LigneBonCommande {self.designation}>'
+
+    @property
+    def montant_total(self):
+        return float(self.quantite or 0) * float(self.prix_unitaire or 0)
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
@@ -1190,6 +1426,89 @@ def dashboard():
                           bailleurs=bailleurs,
                           stats=stats,
                           alertes=alertes)
+
+
+@app.route('/api/dashboard/monthly-expenses')
+@login_required
+def api_monthly_expenses():
+    """API: Dépenses mensuelles sur les 12 derniers mois"""
+    from calendar import month_abbr
+    import locale
+    try:
+        locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+    except:
+        pass
+
+    # Calculer les 12 derniers mois
+    today = date.today()
+    months = []
+    for i in range(11, -1, -1):
+        # Calculer le mois (en partant de 11 mois avant jusqu'à maintenant)
+        month = today.month - i
+        year = today.year
+        while month <= 0:
+            month += 12
+            year -= 1
+        months.append((year, month))
+
+    labels = []
+    values = []
+
+    for year, month in months:
+        # Calculer premier et dernier jour du mois
+        first_day = date(year, month, 1)
+        if month == 12:
+            last_day = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            last_day = date(year, month + 1, 1) - timedelta(days=1)
+
+        # Somme des débits sur comptes classe 6 pour ce mois
+        total = db.session.query(
+            db.func.sum(LigneEcriture.debit)
+        ).join(PieceComptable).join(CompteComptable).filter(
+            PieceComptable.date_piece >= first_day,
+            PieceComptable.date_piece <= last_day,
+            CompteComptable.classe == 6
+        ).scalar() or 0
+
+        # Label du mois
+        try:
+            labels.append(first_day.strftime('%b %Y'))
+        except:
+            labels.append(f"{month}/{year}")
+        values.append(float(total))
+
+    return jsonify({'labels': labels, 'values': values})
+
+
+@app.route('/api/dashboard/category-distribution')
+@login_required
+def api_category_distribution():
+    """API: Répartition des dépenses par catégorie budgétaire"""
+    categories = CategorieBudget.query.order_by(CategorieBudget.ordre).all()
+
+    labels = []
+    values = []
+
+    for cat in categories:
+        # Somme des débits imputés aux lignes budget de cette catégorie
+        total = db.session.query(
+            db.func.sum(LigneEcriture.debit)
+        ).join(LigneBudget).join(CompteComptable).filter(
+            LigneBudget.categorie_id == cat.id,
+            CompteComptable.classe == 6
+        ).scalar() or 0
+
+        if float(total) > 0:
+            labels.append(cat.nom)
+            values.append(float(total))
+
+    # Si aucune donnée, retourner des valeurs par défaut
+    if not values:
+        labels = ['Aucune dépense']
+        values = [1]
+
+    return jsonify({'labels': labels, 'values': values})
 
 
 # =============================================================================
@@ -3013,6 +3332,732 @@ def api_search_fournisseurs():
 
 
 # =============================================================================
+# ROUTES - NOTES DE FRAIS
+# =============================================================================
+
+@app.route('/notes-frais')
+@login_required
+def liste_notes_frais():
+    """Liste des notes de frais"""
+    statut = request.args.get('statut', '')
+    projet_id = request.args.get('projet_id', '')
+
+    # Si l'utilisateur n'est pas comptable/directeur, ne voir que ses propres notes
+    if current_user.role == 'auditeur':
+        query = NoteFrais.query
+    elif current_user.role in ['comptable', 'directeur']:
+        query = NoteFrais.query
+    else:
+        query = NoteFrais.query.filter(NoteFrais.employe_id == current_user.id)
+
+    if statut:
+        query = query.filter(NoteFrais.statut == statut)
+    if projet_id:
+        query = query.filter(NoteFrais.projet_id == int(projet_id))
+
+    notes = query.order_by(NoteFrais.date_creation.desc()).all()
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    # Statistiques
+    stats = {
+        'total': len(notes),
+        'en_attente': sum(1 for n in notes if n.statut == 'soumis'),
+        'montant_en_attente': sum(float(n.montant or 0) for n in notes if n.statut == 'soumis')
+    }
+
+    return render_template('notes_frais/liste.html',
+                          notes=notes,
+                          projets=projets,
+                          stats=stats,
+                          statut_filtre=statut,
+                          projet_filtre=projet_id)
+
+
+@app.route('/notes-frais/nouvelle', methods=['GET', 'POST'])
+@login_required
+def nouvelle_note_frais():
+    """Créer une nouvelle note de frais"""
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        # Générer numéro
+        annee = datetime.now().year
+        derniere = NoteFrais.query.filter(
+            NoteFrais.numero.like(f'NF-{annee}-%')
+        ).order_by(NoteFrais.id.desc()).first()
+
+        num = 1
+        if derniere:
+            try:
+                num = int(derniere.numero.split('-')[-1]) + 1
+            except ValueError:
+                pass
+        numero = f"NF-{annee}-{num:04d}"
+
+        # Créer la note de frais
+        note = NoteFrais(
+            numero=numero,
+            employe_id=current_user.id,
+            projet_id=request.form.get('projet_id') or None,
+            ligne_budget_id=request.form.get('ligne_budget_id') or None,
+            date_depense=datetime.strptime(request.form.get('date_depense'), '%Y-%m-%d').date(),
+            montant=Decimal(request.form.get('montant')),
+            categorie=request.form.get('categorie'),
+            description=request.form.get('description'),
+            a_rembourser=request.form.get('a_rembourser') == 'on',
+            cree_par=current_user.email
+        )
+
+        # Gérer l'upload du justificatif
+        if 'justificatif' in request.files:
+            fichier = request.files['justificatif']
+            if fichier and fichier.filename:
+                from werkzeug.utils import secure_filename
+                filename = secure_filename(fichier.filename)
+                # Créer un nom unique
+                ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+                unique_filename = f"nf_{numero}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'notes_frais', unique_filename)
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                fichier.save(filepath)
+                note.justificatif = f"notes_frais/{unique_filename}"
+
+        db.session.add(note)
+        db.session.commit()
+
+        log_audit('notes_frais', note.id, 'CREATE', None, {
+            'numero': note.numero,
+            'montant': str(note.montant),
+            'categorie': note.categorie
+        })
+
+        flash(f'Note de frais {numero} créée avec succès.', 'success')
+        return redirect(url_for('detail_note_frais', id=note.id))
+
+    return render_template('notes_frais/formulaire.html',
+                          note=None,
+                          projets=projets,
+                          categories=NoteFrais.CATEGORIES)
+
+
+@app.route('/notes-frais/<int:id>')
+@login_required
+def detail_note_frais(id):
+    """Détail d'une note de frais"""
+    note = NoteFrais.query.get_or_404(id)
+
+    # Vérifier accès
+    if current_user.role not in ['comptable', 'directeur', 'auditeur'] and note.employe_id != current_user.id:
+        flash("Vous n'avez pas accès à cette note de frais.", 'danger')
+        return redirect(url_for('liste_notes_frais'))
+
+    return render_template('notes_frais/detail.html', note=note)
+
+
+@app.route('/notes-frais/<int:id>/modifier', methods=['GET', 'POST'])
+@login_required
+def modifier_note_frais(id):
+    """Modifier une note de frais (brouillon ou rejetée)"""
+    note = NoteFrais.query.get_or_404(id)
+
+    # Vérifier accès et statut
+    if note.employe_id != current_user.id and current_user.role != 'directeur':
+        flash("Vous n'avez pas le droit de modifier cette note de frais.", 'danger')
+        return redirect(url_for('liste_notes_frais'))
+
+    if not note.est_modifiable:
+        flash("Cette note de frais ne peut plus être modifiée.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        old_values = {
+            'montant': str(note.montant),
+            'categorie': note.categorie,
+            'description': note.description
+        }
+
+        note.projet_id = request.form.get('projet_id') or None
+        note.ligne_budget_id = request.form.get('ligne_budget_id') or None
+        note.date_depense = datetime.strptime(request.form.get('date_depense'), '%Y-%m-%d').date()
+        note.montant = Decimal(request.form.get('montant'))
+        note.categorie = request.form.get('categorie')
+        note.description = request.form.get('description')
+        note.a_rembourser = request.form.get('a_rembourser') == 'on'
+
+        # Remettre en brouillon si rejetée
+        if note.statut == 'rejete':
+            note.statut = 'brouillon'
+            note.motif_rejet = None
+
+        # Gérer nouveau justificatif
+        if 'justificatif' in request.files:
+            fichier = request.files['justificatif']
+            if fichier and fichier.filename:
+                from werkzeug.utils import secure_filename
+                filename = secure_filename(fichier.filename)
+                ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+                unique_filename = f"nf_{note.numero}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'notes_frais', unique_filename)
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                fichier.save(filepath)
+                note.justificatif = f"notes_frais/{unique_filename}"
+
+        db.session.commit()
+
+        log_audit('notes_frais', note.id, 'UPDATE', old_values, {
+            'montant': str(note.montant),
+            'categorie': note.categorie,
+            'description': note.description
+        })
+
+        flash('Note de frais modifiée avec succès.', 'success')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    return render_template('notes_frais/formulaire.html',
+                          note=note,
+                          projets=projets,
+                          categories=NoteFrais.CATEGORIES)
+
+
+@app.route('/notes-frais/<int:id>/soumettre', methods=['POST'])
+@login_required
+def soumettre_note_frais(id):
+    """Soumettre une note de frais pour approbation"""
+    note = NoteFrais.query.get_or_404(id)
+
+    if note.employe_id != current_user.id:
+        flash("Vous ne pouvez soumettre que vos propres notes de frais.", 'danger')
+        return redirect(url_for('liste_notes_frais'))
+
+    if not note.peut_soumettre:
+        flash("Cette note de frais ne peut pas être soumise.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    note.statut = 'soumis'
+    note.date_soumission = datetime.utcnow()
+    db.session.commit()
+
+    log_audit('notes_frais', note.id, 'UPDATE', {'statut': 'brouillon'}, {'statut': 'soumis'})
+
+    flash(f'Note de frais {note.numero} soumise pour approbation.', 'success')
+    return redirect(url_for('detail_note_frais', id=id))
+
+
+@app.route('/notes-frais/<int:id>/approuver', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def approuver_note_frais(id):
+    """Approuver une note de frais"""
+    note = NoteFrais.query.get_or_404(id)
+
+    if not note.peut_approuver:
+        flash("Cette note de frais ne peut pas être approuvée.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    note.statut = 'approuve'
+    note.validateur_id = current_user.id
+    note.date_validation = datetime.utcnow()
+    db.session.commit()
+
+    log_audit('notes_frais', note.id, 'UPDATE', {'statut': 'soumis'}, {'statut': 'approuve'})
+
+    flash(f'Note de frais {note.numero} approuvée.', 'success')
+    return redirect(url_for('detail_note_frais', id=id))
+
+
+@app.route('/notes-frais/<int:id>/rejeter', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def rejeter_note_frais(id):
+    """Rejeter une note de frais"""
+    note = NoteFrais.query.get_or_404(id)
+
+    if not note.peut_approuver:
+        flash("Cette note de frais ne peut pas être rejetée.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    motif = request.form.get('motif_rejet', '')
+    if not motif:
+        flash("Veuillez indiquer un motif de rejet.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    note.statut = 'rejete'
+    note.validateur_id = current_user.id
+    note.date_validation = datetime.utcnow()
+    note.motif_rejet = motif
+    db.session.commit()
+
+    log_audit('notes_frais', note.id, 'UPDATE', {'statut': 'soumis'}, {'statut': 'rejete', 'motif': motif})
+
+    flash(f'Note de frais {note.numero} rejetée.', 'warning')
+    return redirect(url_for('detail_note_frais', id=id))
+
+
+@app.route('/notes-frais/<int:id>/rembourser', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def rembourser_note_frais(id):
+    """Marquer une note de frais comme remboursée"""
+    note = NoteFrais.query.get_or_404(id)
+
+    if note.statut != 'approuve':
+        flash("Seules les notes approuvées peuvent être remboursées.", 'warning')
+        return redirect(url_for('detail_note_frais', id=id))
+
+    note.statut = 'rembourse'
+    note.date_remboursement = datetime.utcnow()
+    db.session.commit()
+
+    log_audit('notes_frais', note.id, 'UPDATE', {'statut': 'approuve'}, {'statut': 'rembourse'})
+
+    flash(f'Note de frais {note.numero} marquée comme remboursée.', 'success')
+    return redirect(url_for('detail_note_frais', id=id))
+
+
+@app.route('/notes-frais/<int:id>/pdf')
+@login_required
+def pdf_note_frais(id):
+    """Générer PDF de la note de frais"""
+    note = NoteFrais.query.get_or_404(id)
+
+    # Vérifier accès
+    if current_user.role not in ['comptable', 'directeur', 'auditeur'] and note.employe_id != current_user.id:
+        flash("Vous n'avez pas accès à cette note de frais.", 'danger')
+        return redirect(url_for('liste_notes_frais'))
+
+    html = render_template('notes_frais/pdf.html', note=note, org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=note_frais_{note.numero}.pdf'
+        return response
+    except ImportError:
+        # Fallback: retourner HTML
+        return html
+
+
+@app.route('/api/lignes-budget/<int:projet_id>')
+@login_required
+def api_lignes_budget_projet(projet_id):
+    """API pour obtenir les lignes budget d'un projet"""
+    lignes = LigneBudget.query.filter_by(projet_id=projet_id).order_by(LigneBudget.code).all()
+    return jsonify([{
+        'id': l.id,
+        'code': l.code,
+        'intitule': l.intitule,
+        'montant_prevu': float(l.montant_prevu or 0)
+    } for l in lignes])
+
+
+# =============================================================================
+# ROUTES - DEMANDES D'ACHAT
+# =============================================================================
+
+@app.route('/achats/demandes')
+@login_required
+def liste_demandes_achat():
+    """Liste des demandes d'achat"""
+    statut = request.args.get('statut', '')
+    projet_id = request.args.get('projet_id', '')
+
+    query = DemandeAchat.query
+
+    if statut:
+        query = query.filter(DemandeAchat.statut == statut)
+    if projet_id:
+        query = query.filter(DemandeAchat.projet_id == int(projet_id))
+
+    demandes = query.order_by(DemandeAchat.date_creation.desc()).all()
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    # Statistiques
+    stats = {
+        'total': len(demandes),
+        'en_attente': sum(1 for d in demandes if d.statut == 'soumis'),
+        'montant_en_attente': sum(d.montant_total for d in demandes if d.statut == 'soumis')
+    }
+
+    return render_template('achats/demandes_liste.html',
+                          demandes=demandes,
+                          projets=projets,
+                          stats=stats,
+                          statut_filtre=statut,
+                          projet_filtre=projet_id)
+
+
+@app.route('/achats/demandes/nouvelle', methods=['GET', 'POST'])
+@login_required
+def nouvelle_demande_achat():
+    """Créer une nouvelle demande d'achat"""
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        # Générer numéro
+        annee = datetime.now().year
+        derniere = DemandeAchat.query.filter(
+            DemandeAchat.numero.like(f'DA-{annee}-%')
+        ).order_by(DemandeAchat.id.desc()).first()
+
+        num = 1
+        if derniere:
+            try:
+                num = int(derniere.numero.split('-')[-1]) + 1
+            except ValueError:
+                pass
+        numero = f"DA-{annee}-{num:04d}"
+
+        # Créer la demande
+        demande = DemandeAchat(
+            numero=numero,
+            demandeur_id=current_user.id,
+            projet_id=request.form.get('projet_id') or None,
+            ligne_budget_id=request.form.get('ligne_budget_id') or None,
+            date_demande=datetime.strptime(request.form.get('date_demande'), '%Y-%m-%d').date(),
+            objet=request.form.get('objet'),
+            description=request.form.get('description'),
+            urgence=request.form.get('urgence', 'normal'),
+            cree_par=current_user.email
+        )
+
+        db.session.add(demande)
+        db.session.flush()  # Pour obtenir l'ID
+
+        # Ajouter les lignes
+        designations = request.form.getlist('designation[]')
+        quantites = request.form.getlist('quantite[]')
+        unites = request.form.getlist('unite[]')
+        prix = request.form.getlist('prix_unitaire[]')
+
+        for i, designation in enumerate(designations):
+            if designation.strip():
+                ligne = LigneDemandeAchat(
+                    demande_id=demande.id,
+                    designation=designation,
+                    quantite=Decimal(quantites[i]) if quantites[i] else 1,
+                    unite=unites[i] if i < len(unites) else 'piece',
+                    prix_unitaire_estime=Decimal(prix[i]) if prix[i] else 0
+                )
+                db.session.add(ligne)
+
+        # Mettre à jour le montant estimé
+        demande.montant_estime = Decimal(str(demande.montant_total))
+
+        db.session.commit()
+
+        log_audit('demandes_achat', demande.id, 'CREATE', None, {
+            'numero': demande.numero,
+            'objet': demande.objet,
+            'montant_estime': str(demande.montant_estime)
+        })
+
+        flash(f'Demande d\'achat {numero} créée avec succès.', 'success')
+        return redirect(url_for('detail_demande_achat', id=demande.id))
+
+    return render_template('achats/demande_formulaire.html',
+                          demande=None,
+                          projets=projets,
+                          urgences=DemandeAchat.URGENCES,
+                          unites=LigneDemandeAchat.UNITES)
+
+
+@app.route('/achats/demandes/<int:id>')
+@login_required
+def detail_demande_achat(id):
+    """Détail d'une demande d'achat"""
+    demande = DemandeAchat.query.get_or_404(id)
+    fournisseurs = Fournisseur.query.filter_by(actif=True).order_by(Fournisseur.nom).all()
+    return render_template('achats/demande_detail.html', demande=demande, fournisseurs=fournisseurs)
+
+
+@app.route('/achats/demandes/<int:id>/modifier', methods=['GET', 'POST'])
+@login_required
+def modifier_demande_achat(id):
+    """Modifier une demande d'achat"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    if not demande.est_modifiable:
+        flash("Cette demande ne peut plus être modifiée.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        old_values = {
+            'objet': demande.objet,
+            'montant_estime': str(demande.montant_estime)
+        }
+
+        demande.projet_id = request.form.get('projet_id') or None
+        demande.ligne_budget_id = request.form.get('ligne_budget_id') or None
+        demande.date_demande = datetime.strptime(request.form.get('date_demande'), '%Y-%m-%d').date()
+        demande.objet = request.form.get('objet')
+        demande.description = request.form.get('description')
+        demande.urgence = request.form.get('urgence', 'normal')
+
+        # Remettre en brouillon si rejetée
+        if demande.statut == 'rejete':
+            demande.statut = 'brouillon'
+            demande.motif_rejet = None
+
+        # Supprimer les anciennes lignes et recréer
+        LigneDemandeAchat.query.filter_by(demande_id=demande.id).delete()
+
+        designations = request.form.getlist('designation[]')
+        quantites = request.form.getlist('quantite[]')
+        unites = request.form.getlist('unite[]')
+        prix = request.form.getlist('prix_unitaire[]')
+
+        for i, designation in enumerate(designations):
+            if designation.strip():
+                ligne = LigneDemandeAchat(
+                    demande_id=demande.id,
+                    designation=designation,
+                    quantite=Decimal(quantites[i]) if quantites[i] else 1,
+                    unite=unites[i] if i < len(unites) else 'piece',
+                    prix_unitaire_estime=Decimal(prix[i]) if prix[i] else 0
+                )
+                db.session.add(ligne)
+
+        demande.montant_estime = Decimal(str(demande.montant_total))
+
+        db.session.commit()
+
+        log_audit('demandes_achat', demande.id, 'UPDATE', old_values, {
+            'objet': demande.objet,
+            'montant_estime': str(demande.montant_estime)
+        })
+
+        flash('Demande d\'achat modifiée avec succès.', 'success')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    return render_template('achats/demande_formulaire.html',
+                          demande=demande,
+                          projets=projets,
+                          urgences=DemandeAchat.URGENCES,
+                          unites=LigneDemandeAchat.UNITES)
+
+
+@app.route('/achats/demandes/<int:id>/soumettre', methods=['POST'])
+@login_required
+def soumettre_demande_achat(id):
+    """Soumettre une demande d'achat pour approbation"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    if not demande.peut_soumettre:
+        flash("Cette demande ne peut pas être soumise (ajoutez au moins une ligne).", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    demande.statut = 'soumis'
+    demande.date_soumission = datetime.utcnow()
+    db.session.commit()
+
+    log_audit('demandes_achat', demande.id, 'UPDATE', {'statut': 'brouillon'}, {'statut': 'soumis'})
+
+    if demande.necessite_approbation_directeur:
+        flash(f'Demande {demande.numero} soumise. Montant >= 500,000 FCFA : approbation du directeur requise.', 'info')
+    else:
+        flash(f'Demande {demande.numero} soumise pour approbation.', 'success')
+
+    return redirect(url_for('detail_demande_achat', id=id))
+
+
+@app.route('/achats/demandes/<int:id>/approuver', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def approuver_demande_achat(id):
+    """Approuver une demande d'achat"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    if not demande.peut_approuver:
+        flash("Cette demande ne peut pas être approuvée.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    # Vérifier le seuil d'approbation
+    if demande.necessite_approbation_directeur and current_user.role != 'directeur':
+        flash("Cette demande nécessite l'approbation du directeur (montant >= 500,000 FCFA).", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    demande.statut = 'approuve'
+    demande.approbateur_id = current_user.id
+    demande.date_approbation = datetime.utcnow()
+    db.session.commit()
+
+    log_audit('demandes_achat', demande.id, 'UPDATE', {'statut': 'soumis'}, {'statut': 'approuve'})
+
+    flash(f'Demande {demande.numero} approuvée. Vous pouvez maintenant générer un bon de commande.', 'success')
+    return redirect(url_for('detail_demande_achat', id=id))
+
+
+@app.route('/achats/demandes/<int:id>/rejeter', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def rejeter_demande_achat(id):
+    """Rejeter une demande d'achat"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    if not demande.peut_approuver:
+        flash("Cette demande ne peut pas être rejetée.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    motif = request.form.get('motif_rejet', '')
+    if not motif:
+        flash("Veuillez indiquer un motif de rejet.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    demande.statut = 'rejete'
+    demande.approbateur_id = current_user.id
+    demande.date_approbation = datetime.utcnow()
+    demande.motif_rejet = motif
+    db.session.commit()
+
+    log_audit('demandes_achat', demande.id, 'UPDATE', {'statut': 'soumis'}, {'statut': 'rejete', 'motif': motif})
+
+    flash(f'Demande {demande.numero} rejetée.', 'warning')
+    return redirect(url_for('detail_demande_achat', id=id))
+
+
+@app.route('/achats/demandes/<int:id>/generer-bc', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def generer_bon_commande(id):
+    """Générer un bon de commande à partir d'une demande approuvée"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    if demande.statut != 'approuve':
+        flash("Seules les demandes approuvées peuvent générer un bon de commande.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    fournisseur_id = request.form.get('fournisseur_id')
+    if not fournisseur_id:
+        flash("Veuillez sélectionner un fournisseur.", 'warning')
+        return redirect(url_for('detail_demande_achat', id=id))
+
+    # Générer numéro
+    annee = datetime.now().year
+    dernier = BonCommande.query.filter(
+        BonCommande.numero.like(f'BC-{annee}-%')
+    ).order_by(BonCommande.id.desc()).first()
+
+    num = 1
+    if dernier:
+        try:
+            num = int(dernier.numero.split('-')[-1]) + 1
+        except ValueError:
+            pass
+    numero = f"BC-{annee}-{num:04d}"
+
+    # Créer le bon de commande
+    bon = BonCommande(
+        numero=numero,
+        demande_achat_id=demande.id,
+        fournisseur_id=int(fournisseur_id),
+        date_commande=date.today(),
+        date_livraison_prevue=datetime.strptime(request.form.get('date_livraison'), '%Y-%m-%d').date() if request.form.get('date_livraison') else None,
+        conditions_paiement=request.form.get('conditions_paiement'),
+        adresse_livraison=request.form.get('adresse_livraison'),
+        notes=request.form.get('notes'),
+        cree_par=current_user.email
+    )
+
+    db.session.add(bon)
+    db.session.flush()
+
+    # Copier les lignes de la demande
+    montant_total = 0
+    for ligne_da in demande.lignes:
+        ligne_bc = LigneBonCommande(
+            bon_commande_id=bon.id,
+            designation=ligne_da.designation,
+            quantite=ligne_da.quantite,
+            unite=ligne_da.unite,
+            prix_unitaire=ligne_da.prix_unitaire_estime
+        )
+        db.session.add(ligne_bc)
+        montant_total += ligne_bc.montant_total
+
+    bon.montant_total = Decimal(str(montant_total))
+
+    # Mettre à jour la demande
+    demande.statut = 'commande'
+    demande.bon_commande_id = bon.id
+
+    db.session.commit()
+
+    log_audit('bons_commande', bon.id, 'CREATE', None, {
+        'numero': bon.numero,
+        'demande': demande.numero,
+        'montant_total': str(bon.montant_total)
+    })
+
+    flash(f'Bon de commande {numero} généré avec succès.', 'success')
+    return redirect(url_for('detail_bon_commande', id=bon.id))
+
+
+@app.route('/achats/bons-commande')
+@login_required
+def liste_bons_commande():
+    """Liste des bons de commande"""
+    statut = request.args.get('statut', '')
+
+    query = BonCommande.query
+    if statut:
+        query = query.filter(BonCommande.statut == statut)
+
+    bons = query.order_by(BonCommande.date_creation.desc()).all()
+
+    return render_template('achats/bons_commande_liste.html', bons=bons, statut_filtre=statut)
+
+
+@app.route('/achats/bons-commande/<int:id>')
+@login_required
+def detail_bon_commande(id):
+    """Détail d'un bon de commande"""
+    bon = BonCommande.query.get_or_404(id)
+    return render_template('achats/bon_commande_detail.html', bon=bon)
+
+
+@app.route('/achats/bons-commande/<int:id>/pdf')
+@login_required
+def pdf_bon_commande(id):
+    """Générer PDF du bon de commande"""
+    bon = BonCommande.query.get_or_404(id)
+
+    html = render_template('achats/bon_commande_pdf.html', bon=bon, org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=bon_commande_{bon.numero}.pdf'
+        return response
+    except ImportError:
+        return html
+
+
+@app.route('/achats/bons-commande/<int:id>/livrer', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def livrer_bon_commande(id):
+    """Mettre à jour le statut de livraison d'un bon de commande"""
+    bon = BonCommande.query.get_or_404(id)
+
+    statut = request.form.get('statut_livraison', 'livre')
+    if statut in ['livre_partiel', 'livre']:
+        bon.statut = statut
+        db.session.commit()
+
+        log_audit('bons_commande', bon.id, 'UPDATE', {'statut': 'emis'}, {'statut': statut})
+
+        flash(f'Bon de commande {bon.numero} marqué comme {statut.replace("_", " ")}.', 'success')
+
+    return redirect(url_for('detail_bon_commande', id=id))
+
+
+# =============================================================================
 # ROUTES - IMMOBILISATIONS
 # =============================================================================
 
@@ -4661,4 +5706,5 @@ if __name__ == '__main__':
         init_db()
     # SECURITY: Debug mode disabled in production
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(debug=debug_mode, port=5000)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=debug_mode, port=port)

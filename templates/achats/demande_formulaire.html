@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}{% if demande %}Modifier{% else %}Nouvelle{% endif %} Demande d'Achat - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_demandes_achat') }}">Demandes d'Achat</a></li>
+            <li class="breadcrumb-item active">{% if demande %}{{ demande.numero }}{% else %}Nouvelle{% endif %}</li>
+        </ol>
+    </nav>
+    <h2>
+        <i class="bi bi-{% if demande %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+        {% if demande %}Modifier la demande {{ demande.numero }}{% else %}Nouvelle demande d'achat{% endif %}
+    </h2>
+</div>
+
+<form method="POST" id="formDemande">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations principales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Informations générales
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Date de la demande *</label>
+                            <input type="date" class="form-control" name="date_demande" required
+                                   value="{{ demande.date_demande.strftime('%Y-%m-%d') if demande else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Urgence</label>
+                            <select name="urgence" class="form-select">
+                                {% for code, nom in urgences %}
+                                <option value="{{ code }}" {% if demande and demande.urgence == code %}selected{% endif %}>{{ nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Objet de la demande *</label>
+                        <input type="text" class="form-control" name="objet" required maxlength="200"
+                               value="{{ demande.objet if demande else '' }}"
+                               placeholder="Ex: Achat de fournitures de bureau">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Projet</label>
+                            <select name="projet_id" id="projet_id" class="form-select">
+                                <option value="">-- Aucun projet --</option>
+                                {% for projet in projets %}
+                                <option value="{{ projet.id }}" {% if demande and demande.projet_id == projet.id %}selected{% endif %}>
+                                    {{ projet.code }} - {{ projet.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ligne budgétaire</label>
+                            <select name="ligne_budget_id" id="ligne_budget_id" class="form-select">
+                                <option value="">-- Sélectionner un projet d'abord --</option>
+                                {% if demande and demande.ligne_budget %}
+                                <option value="{{ demande.ligne_budget.id }}" selected>
+                                    {{ demande.ligne_budget.code }} - {{ demande.ligne_budget.intitule }}
+                                </option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description / Justification</label>
+                        <textarea class="form-control" name="description" rows="2"
+                                  placeholder="Contexte et justification de l'achat">{{ demande.description if demande else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lignes de la demande -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-ul me-2"></i>Articles demandés</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="ajouterLigne()">
+                        <i class="bi bi-plus me-1"></i>Ajouter une ligne
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table" id="tableLignes">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%">Désignation *</th>
+                                <th style="width: 15%">Quantité</th>
+                                <th style="width: 15%">Unité</th>
+                                <th style="width: 20%">Prix unit. estimé</th>
+                                <th style="width: 10%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="lignesBody">
+                            {% if demande and demande.lignes %}
+                                {% for ligne in demande.lignes %}
+                                <tr class="ligne-demande">
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="designation[]" required
+                                               value="{{ ligne.designation }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm quantite" name="quantite[]"
+                                               min="0.01" step="0.01" value="{{ ligne.quantite }}" onchange="calculerTotal()">
+                                    </td>
+                                    <td>
+                                        <select name="unite[]" class="form-select form-select-sm">
+                                            {% for code, nom in unites %}
+                                            <option value="{{ code }}" {% if ligne.unite == code %}selected{% endif %}>{{ nom }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm prix" name="prix_unitaire[]"
+                                               min="0" step="1" value="{{ ligne.prix_unitaire_estime|int }}" onchange="calculerTotal()">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr class="ligne-demande">
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="designation[]" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm quantite" name="quantite[]"
+                                               min="0.01" step="0.01" value="1" onchange="calculerTotal()">
+                                    </td>
+                                    <td>
+                                        <select name="unite[]" class="form-select form-select-sm">
+                                            {% for code, nom in unites %}
+                                            <option value="{{ code }}">{{ nom }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm prix" name="prix_unitaire[]"
+                                               min="0" step="1" value="0" onchange="calculerTotal()">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end fw-bold">Total estimé:</td>
+                                <td class="fw-bold" id="totalEstime">0 FCFA</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Actions -->
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <i class="bi bi-gear me-2"></i>Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            {% if demande %}Enregistrer{% else %}Créer{% endif %}
+                        </button>
+                        <a href="{{ url_for('liste_demandes_achat') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                    </div>
+
+                    <div class="alert alert-info mt-3 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Seuil d'approbation :</strong><br>
+                        &lt; 500,000 FCFA : Comptable<br>
+                        &ge; 500,000 FCFA : Directeur
+                    </div>
+                </div>
+            </div>
+
+            {% if demande %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Informations
+                </div>
+                <div class="card-body small">
+                    <p class="mb-1"><strong>Numéro :</strong> {{ demande.numero }}</p>
+                    <p class="mb-1"><strong>Créée le :</strong> {{ demande.date_creation.strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p class="mb-1"><strong>Par :</strong> {{ demande.demandeur.nom }}</p>
+                    <p class="mb-0">
+                        <strong>Statut :</strong>
+                        {% if demande.statut == 'brouillon' %}
+                        <span class="badge bg-secondary">Brouillon</span>
+                        {% elif demande.statut == 'rejete' %}
+                        <span class="badge bg-danger">Rejeté</span>
+                        {% endif %}
+                    </p>
+                    {% if demande.statut == 'rejete' and demande.motif_rejet %}
+                    <div class="alert alert-danger mt-2 mb-0 small">
+                        <strong>Motif du rejet :</strong><br>
+                        {{ demande.motif_rejet }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<!-- Template pour nouvelle ligne -->
+<template id="templateLigne">
+    <tr class="ligne-demande">
+        <td>
+            <input type="text" class="form-control form-control-sm" name="designation[]" required>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm quantite" name="quantite[]"
+                   min="0.01" step="0.01" value="1" onchange="calculerTotal()">
+        </td>
+        <td>
+            <select name="unite[]" class="form-select form-select-sm">
+                {% for code, nom in unites %}
+                <option value="{{ code }}">{{ nom }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm prix" name="prix_unitaire[]"
+                   min="0" step="1" value="0" onchange="calculerTotal()">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function ajouterLigne() {
+    const template = document.getElementById('templateLigne');
+    const clone = template.content.cloneNode(true);
+    document.getElementById('lignesBody').appendChild(clone);
+}
+
+function supprimerLigne(btn) {
+    const tbody = document.getElementById('lignesBody');
+    if (tbody.querySelectorAll('.ligne-demande').length > 1) {
+        btn.closest('tr').remove();
+        calculerTotal();
+    } else {
+        alert('Il faut au moins une ligne dans la demande.');
+    }
+}
+
+function calculerTotal() {
+    let total = 0;
+    const lignes = document.querySelectorAll('.ligne-demande');
+    lignes.forEach(ligne => {
+        const qte = parseFloat(ligne.querySelector('.quantite').value) || 0;
+        const prix = parseFloat(ligne.querySelector('.prix').value) || 0;
+        total += qte * prix;
+    });
+    document.getElementById('totalEstime').textContent = total.toLocaleString('fr-FR') + ' FCFA';
+}
+
+// Charger les lignes budgétaires quand le projet change
+document.getElementById('projet_id').addEventListener('change', function() {
+    const projetId = this.value;
+    const ligneBudgetSelect = document.getElementById('ligne_budget_id');
+
+    ligneBudgetSelect.innerHTML = '<option value="">Chargement...</option>';
+
+    if (!projetId) {
+        ligneBudgetSelect.innerHTML = '<option value="">-- Sélectionner un projet d\'abord --</option>';
+        return;
+    }
+
+    fetch('/api/lignes-budget/' + projetId)
+        .then(response => response.json())
+        .then(data => {
+            let options = '<option value="">-- Sélectionner --</option>';
+            data.forEach(ligne => {
+                options += `<option value="${ligne.id}">${ligne.code} - ${ligne.intitule}</option>`;
+            });
+            ligneBudgetSelect.innerHTML = options;
+        })
+        .catch(error => {
+            ligneBudgetSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        });
+});
+
+// Calculer le total au chargement
+document.addEventListener('DOMContentLoaded', calculerTotal);
+</script>
+{% endblock %}

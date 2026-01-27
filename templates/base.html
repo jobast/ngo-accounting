@@ -8,13 +8,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2c5530;
-            --secondary-color: #4a7c59;
-            --accent-color: #8fbc8f;
+            /* Couleurs adaptées au logo CREATES (vert olive) */
+            --primary-color: #7D8B6A;
+            --secondary-color: #6B7A5A;
+            --accent-color: #A4B494;
+            --dark-color: #5A6A4A;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f7f5;
+            background-color: #f7f8f5;
         }
         .sidebar {
             position: fixed;
@@ -24,37 +26,64 @@
             width: 250px;
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding-top: 20px;
+            padding-top: 10px;
             z-index: 1000;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        /* Custom scrollbar for sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
         }
         .sidebar .logo {
             text-align: center;
-            padding: 20px;
+            padding: 15px 10px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .sidebar .logo h4 {
             margin: 0;
             font-weight: bold;
+            font-size: 1.1rem;
         }
         .sidebar .logo small {
             opacity: 0.8;
+            font-size: 0.75rem;
         }
         .sidebar .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 25px;
+            color: rgba(255,255,255,0.85);
+            padding: 10px 20px;
             display: flex;
             align-items: center;
             transition: all 0.3s;
+            font-size: 0.9rem;
         }
         .sidebar .nav-link:hover, .sidebar .nav-link.active {
             color: white;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.15);
             border-left: 4px solid var(--accent-color);
         }
         .sidebar .nav-link i {
             margin-right: 10px;
-            width: 20px;
+            width: 18px;
+            font-size: 1rem;
+        }
+        .sidebar .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 20px 4px;
+            margin-top: 5px;
         }
         .main-content {
             margin-left: 250px;
@@ -76,8 +105,26 @@
             border-color: var(--primary-color);
         }
         .btn-primary:hover {
-            background-color: var(--secondary-color);
-            border-color: var(--secondary-color);
+            background-color: var(--dark-color);
+            border-color: var(--dark-color);
+        }
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        a {
+            color: var(--primary-color);
+        }
+        a:hover {
+            color: var(--dark-color);
         }
         .stat-card {
             background: white;
@@ -123,8 +170,9 @@
     <!-- Sidebar -->
     <nav class="sidebar">
         <div class="logo">
-            <h4>CREATES</h4>
-            <small>Système Comptable GIE</small>
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="CREATES" style="width: 60px; height: auto; margin-bottom: 10px;">
+            <h4>{{ org.nom }}</h4>
+            <small>Système Comptable</small>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">
@@ -147,8 +195,8 @@
                     <i class="bi bi-building"></i> Fournisseurs
                 </a>
             </li>
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">COMPTABILITÉ</small>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">COMPTABILITÉ</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'plan_comptable' %}active{% endif %}" href="{{ url_for('plan_comptable') }}">
@@ -160,8 +208,13 @@
                     <i class="bi bi-journal-text"></i> Écritures
                 </a>
             </li>
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">TRÉSORERIE</small>
+            <li class="nav-item">
+                <a class="nav-link {% if 'note_frais' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_notes_frais') }}">
+                    <i class="bi bi-receipt"></i> Notes de frais
+                </a>
+            </li>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">TRÉSORERIE</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'compte' in request.endpoint|default('') and 'tresorerie' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_comptes_tresorerie') }}">
@@ -188,8 +241,21 @@
                     <i class="bi bi-building"></i> Immobilisations
                 </a>
             </li>
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">RAPPORTS</small>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">ACHATS</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'demande' in request.endpoint|default('') and 'achat' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_demandes_achat') }}">
+                    <i class="bi bi-cart-check"></i> Demandes d'achat
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'bon_commande' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_bons_commande') }}">
+                    <i class="bi bi-file-text"></i> Bons de commande
+                </a>
+            </li>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">RAPPORTS</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'rapports' %}active{% endif %}" href="{{ url_for('rapports') }}">
@@ -212,8 +278,8 @@
                 </a>
             </li>
             {% if current_user.is_authenticated and current_user.role in ['comptable', 'directeur'] %}
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">OUTILS</small>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">OUTILS</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'import' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('import_ecritures_page') }}">
@@ -232,8 +298,8 @@
             </li>
             {% endif %}
             {% if current_user.is_authenticated and current_user.role == 'directeur' %}
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">ADMINISTRATION</small>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">ADMINISTRATION</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'utilisateur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_utilisateurs') }}">
@@ -259,8 +325,8 @@
             </li>
             {% endif %}
             {% if current_user.is_authenticated %}
-            <li class="nav-item mt-3">
-                <small class="text-white-50 px-3">{{ current_user.email }}</small>
+            <li class="nav-item">
+                <small class="nav-section-title text-white-50">{{ current_user.email }}</small>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('logout') }}">

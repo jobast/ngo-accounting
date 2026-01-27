@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bon de Commande {{ bon.numero }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+        }
+        .header {
+            border-bottom: 2px solid #7D8B6A;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header table {
+            width: 100%;
+        }
+        .logo-cell {
+            width: 150px;
+        }
+        .org-info {
+            text-align: right;
+        }
+        .org-name {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #7D8B6A;
+        }
+        .org-address {
+            font-size: 8pt;
+            color: #666;
+        }
+        .document-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            color: #7D8B6A;
+            margin: 15px 0;
+            text-transform: uppercase;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .document-number {
+            text-align: center;
+            font-size: 12pt;
+            margin-bottom: 20px;
+        }
+        .two-columns {
+            margin-bottom: 20px;
+        }
+        .two-columns table {
+            width: 100%;
+        }
+        .two-columns td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 10px;
+        }
+        .info-box {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .info-box h4 {
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+            font-size: 10pt;
+            color: #7D8B6A;
+        }
+        .info-box p {
+            margin: 3px 0;
+            font-size: 9pt;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .items-table th {
+            background-color: #7D8B6A;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 9pt;
+        }
+        .items-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
+        .items-table .text-right {
+            text-align: right;
+        }
+        .items-table .text-center {
+            text-align: center;
+        }
+        .items-table tfoot td {
+            font-weight: bold;
+            background-color: #f5f5f5;
+        }
+        .total-row {
+            font-size: 12pt;
+        }
+        .conditions {
+            margin-top: 20px;
+            font-size: 9pt;
+        }
+        .conditions h4 {
+            margin: 0 0 5px 0;
+            font-size: 10pt;
+            color: #7D8B6A;
+        }
+        .signatures {
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+        .signatures table {
+            width: 100%;
+        }
+        .signatures td {
+            width: 50%;
+            text-align: center;
+            padding-top: 50px;
+            vertical-align: bottom;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin: 0 20px;
+            padding-top: 5px;
+            font-size: 9pt;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 7pt;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+        }
+        .notes-box {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <table>
+            <tr>
+                <td class="logo-cell">
+                    {% if org.logo %}
+                    <img src="{{ org.logo }}" alt="Logo" style="max-width: 100px;">
+                    {% endif %}
+                </td>
+                <td class="org-info">
+                    <div class="org-name">{{ org.nom }}</div>
+                    <div class="org-address">
+                        {{ org.adresse }}<br>
+                        {{ org.ville }}, {{ org.pays }}<br>
+                        {{ org.site_web }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="document-title">Bon de Commande</div>
+    <div class="document-number">
+        <strong>N° {{ bon.numero }}</strong> | Date: {{ bon.date_commande.strftime('%d/%m/%Y') }}
+    </div>
+
+    <div class="two-columns">
+        <table>
+            <tr>
+                <td>
+                    <div class="info-box">
+                        <h4>Fournisseur</h4>
+                        {% if bon.fournisseur %}
+                        <p><strong>{{ bon.fournisseur.nom }}</strong></p>
+                        <p>Code: {{ bon.fournisseur.code }}</p>
+                        {% if bon.fournisseur.adresse %}
+                        <p>{{ bon.fournisseur.adresse }}</p>
+                        {% endif %}
+                        {% if bon.fournisseur.ville %}
+                        <p>{{ bon.fournisseur.ville }}</p>
+                        {% endif %}
+                        {% if bon.fournisseur.telephone %}
+                        <p>Tél: {{ bon.fournisseur.telephone }}</p>
+                        {% endif %}
+                        {% if bon.fournisseur.ninea %}
+                        <p>NINEA: {{ bon.fournisseur.ninea }}</p>
+                        {% endif %}
+                        {% else %}
+                        <p>Non spécifié</p>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div class="info-box">
+                        <h4>Livraison</h4>
+                        <p><strong>Date prévue:</strong> {{ bon.date_livraison_prevue.strftime('%d/%m/%Y') if bon.date_livraison_prevue else 'À définir' }}</p>
+                        <p><strong>Adresse:</strong><br>{{ bon.adresse_livraison or org.adresse }}</p>
+                        {% if bon.demande_achat %}
+                        <p><strong>Réf. demande:</strong> {{ bon.demande_achat.numero }}</p>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%">#</th>
+                <th style="width: 45%">Désignation</th>
+                <th style="width: 10%" class="text-center">Qté</th>
+                <th style="width: 10%">Unité</th>
+                <th style="width: 15%" class="text-right">Prix Unit.</th>
+                <th style="width: 15%" class="text-right">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ligne in bon.lignes %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ ligne.designation }}</td>
+                <td class="text-center">{{ ligne.quantite }}</td>
+                <td>{{ ligne.unite }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(ligne.prix_unitaire) }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(ligne.montant_total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="5" class="text-right">Total HT:</td>
+                <td class="text-right">{{ "{:,.0f}".format(bon.montant_total) }} FCFA</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    {% if bon.conditions_paiement or bon.notes %}
+    <div class="conditions">
+        {% if bon.conditions_paiement %}
+        <h4>Conditions de paiement</h4>
+        <p>{{ bon.conditions_paiement }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if bon.notes %}
+    <div class="notes-box">
+        <strong>Notes:</strong><br>
+        {{ bon.notes }}
+    </div>
+    {% endif %}
+
+    <div class="signatures">
+        <table>
+            <tr>
+                <td>
+                    <div class="signature-line">
+                        <strong>Établi par</strong><br>
+                        {{ bon.cree_par or 'CREATES' }}<br>
+                        Date: {{ bon.date_creation.strftime('%d/%m/%Y') }}
+                    </div>
+                </td>
+                <td>
+                    <div class="signature-line">
+                        <strong>Approuvé par</strong><br>
+                        Direction<br>
+                        Date: _____________
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        {{ org.nom_complet }} | {{ org.adresse }}, {{ org.ville }} | {{ org.site_web }}
+    </div>
+</body>
+</html>

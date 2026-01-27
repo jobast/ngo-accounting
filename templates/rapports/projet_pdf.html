@@ -20,11 +20,11 @@
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 2px solid #2c5530;
+            border-bottom: 2px solid #7D8B6A;
         }
 
         .header h1 {
-            color: #2c5530;
+            color: #7D8B6A;
             font-size: 18pt;
             margin: 0 0 5px 0;
         }
@@ -65,7 +65,7 @@
         .summary-box .big-number {
             font-size: 16pt;
             font-weight: bold;
-            color: #2c5530;
+            color: #7D8B6A;
         }
 
         .summary-box .small-text {
@@ -80,7 +80,7 @@
         }
 
         table.data-table thead th {
-            background-color: #2c5530;
+            background-color: #7D8B6A;
             color: white;
             padding: 8px;
             text-align: left;
@@ -115,7 +115,7 @@
         }
 
         table.data-table tfoot td {
-            background-color: #2c5530;
+            background-color: #7D8B6A;
             color: white;
             padding: 8px;
             font-weight: bold;
@@ -162,8 +162,23 @@
 </head>
 <body>
     <div class="header">
-        <h1>CREATES GIE - Rapport Bailleur</h1>
-        <h2>{{ projet.nom }}</h2>
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="width: 80px; vertical-align: top; border: none;">
+                    <img src="static/img/logo.png" style="width: 70px; height: auto;">
+                </td>
+                <td style="vertical-align: top; border: none; text-align: center;">
+                    <h1>{{ org.nom }} - Rapport Bailleur</h1>
+                    <div style="font-size: 9pt; color: #666;">
+                        {{ org.nom_complet }}<br>
+                        {{ org.adresse }}, {{ org.ville }}<br>
+                        {{ org.site_web }}
+                    </div>
+                </td>
+                <td style="width: 80px; border: none;"></td>
+            </tr>
+        </table>
+        <h2 style="margin-top: 15px;">{{ projet.nom }}</h2>
     </div>
 
     <div class="info-box">
@@ -296,8 +311,8 @@
     </div>
 
     <div class="footer">
-        CREATES GIE - Système Comptable SYSCOHADA<br/>
-        Rapport généré le {{ date_generation.strftime('%d/%m/%Y à %H:%M') }} | Confidentiel
+        {{ org.nom }} - {{ org.adresse }}, {{ org.ville }} | {{ org.site_web }}<br/>
+        Rapport généré le {{ date_generation.strftime('%d/%m/%Y à %H:%M') }} | Système Comptable SYSCOHADA
     </div>
 </body>
 </html>

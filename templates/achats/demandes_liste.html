@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Demandes d'Achat - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-cart-check me-2"></i>Demandes d'Achat</h2>
+        <p class="text-muted mb-0">Gestion des demandes d'achat et workflow d'approbation</p>
+    </div>
+    <div>
+        <a href="{{ url_for('liste_bons_commande') }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-file-text me-1"></i>Bons de commande
+        </a>
+        <a href="{{ url_for('nouvelle_demande_achat') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Nouvelle demande
+        </a>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value">{{ stats.total }}</div>
+                    <div class="text-muted">Demandes d'achat</div>
+                </div>
+                <div class="icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-cart"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value">{{ stats.en_attente }}</div>
+                    <div class="text-muted">En attente d'approbation</div>
+                </div>
+                <div class="icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value">{{ "{:,.0f}".format(stats.montant_en_attente) }} FCFA</div>
+                    <div class="text-muted">Montant en attente</div>
+                </div>
+                <div class="icon bg-info bg-opacity-10 text-info">
+                    <i class="bi bi-cash"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Statut</label>
+                <select name="statut" class="form-select">
+                    <option value="">Tous les statuts</option>
+                    <option value="brouillon" {% if statut_filtre == 'brouillon' %}selected{% endif %}>Brouillon</option>
+                    <option value="soumis" {% if statut_filtre == 'soumis' %}selected{% endif %}>En attente</option>
+                    <option value="approuve" {% if statut_filtre == 'approuve' %}selected{% endif %}>Approuvé</option>
+                    <option value="rejete" {% if statut_filtre == 'rejete' %}selected{% endif %}>Rejeté</option>
+                    <option value="commande" {% if statut_filtre == 'commande' %}selected{% endif %}>Commandé</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Projet</label>
+                <select name="projet_id" class="form-select">
+                    <option value="">Tous les projets</option>
+                    {% for projet in projets %}
+                    <option value="{{ projet.id }}" {% if projet_filtre == projet.id|string %}selected{% endif %}>{{ projet.code }} - {{ projet.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-funnel me-1"></i>Filtrer
+                </button>
+            </div>
+            {% if statut_filtre or projet_filtre %}
+            <div class="col-md-2">
+                <a href="{{ url_for('liste_demandes_achat') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x me-1"></i>Réinitialiser
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Liste des demandes -->
+<div class="card">
+    <div class="card-body">
+        {% if demandes %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Date</th>
+                        <th>Objet</th>
+                        <th>Demandeur</th>
+                        <th>Projet</th>
+                        <th class="text-end">Montant</th>
+                        <th>Urgence</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for demande in demandes %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('detail_demande_achat', id=demande.id) }}" class="fw-bold text-decoration-none">
+                                {{ demande.numero }}
+                            </a>
+                        </td>
+                        <td>{{ demande.date_demande.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ demande.objet }}">
+                                {{ demande.objet }}
+                            </div>
+                        </td>
+                        <td>{{ demande.demandeur.nom }}</td>
+                        <td>
+                            {% if demande.projet %}
+                            <span class="badge bg-secondary">{{ demande.projet.code }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold">{{ "{:,.0f}".format(demande.montant_total) }} FCFA</td>
+                        <td>
+                            {% if demande.urgence == 'urgent' %}
+                            <span class="badge bg-warning text-dark">Urgent</span>
+                            {% elif demande.urgence == 'tres_urgent' %}
+                            <span class="badge bg-danger">Très urgent</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if demande.statut == 'brouillon' %}
+                            <span class="badge bg-secondary">Brouillon</span>
+                            {% elif demande.statut == 'soumis' %}
+                            <span class="badge bg-warning text-dark">
+                                En attente
+                                {% if demande.necessite_approbation_directeur %}
+                                <i class="bi bi-star-fill ms-1" title="Nécessite approbation directeur"></i>
+                                {% endif %}
+                            </span>
+                            {% elif demande.statut == 'approuve' %}
+                            <span class="badge bg-success">Approuvé</span>
+                            {% elif demande.statut == 'rejete' %}
+                            <span class="badge bg-danger">Rejeté</span>
+                            {% elif demande.statut == 'commande' %}
+                            <span class="badge bg-info">Commandé</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('detail_demande_achat', id=demande.id) }}" class="btn btn-outline-primary" title="Voir">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if demande.est_modifiable %}
+                                <a href="{{ url_for('modifier_demande_achat', id=demande.id) }}" class="btn btn-outline-secondary" title="Modifier">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-cart fs-1"></i>
+            <p class="mt-3">Aucune demande d'achat trouvée</p>
+            <a href="{{ url_for('nouvelle_demande_achat') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Créer une demande
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

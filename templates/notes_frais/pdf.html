@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Note de Frais {{ note.numero }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+        }
+        .header {
+            border-bottom: 2px solid #7D8B6A;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header table {
+            width: 100%;
+        }
+        .logo-cell {
+            width: 150px;
+        }
+        .org-info {
+            text-align: right;
+        }
+        .org-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #7D8B6A;
+        }
+        .org-address {
+            font-size: 9pt;
+            color: #666;
+        }
+        .document-title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            color: #7D8B6A;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+        .document-number {
+            text-align: center;
+            font-size: 14pt;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            margin-bottom: 20px;
+        }
+        .info-section h3 {
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            margin: 0 0 10px 0;
+            font-size: 12pt;
+            border-left: 4px solid #7D8B6A;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 6px 10px;
+            vertical-align: top;
+        }
+        .info-table .label {
+            font-weight: bold;
+            color: #666;
+            width: 30%;
+        }
+        .amount {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #7D8B6A;
+            text-align: center;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 2px solid #7D8B6A;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .description-box {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 10pt;
+        }
+        .status-brouillon { background-color: #6c757d; color: white; }
+        .status-soumis { background-color: #ffc107; color: #212529; }
+        .status-approuve { background-color: #28a745; color: white; }
+        .status-rejete { background-color: #dc3545; color: white; }
+        .status-rembourse { background-color: #17a2b8; color: white; }
+        .signatures {
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+        .signatures table {
+            width: 100%;
+        }
+        .signatures td {
+            width: 50%;
+            text-align: center;
+            padding-top: 60px;
+            vertical-align: bottom;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin: 0 20px;
+            padding-top: 5px;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .rejection-box {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .rejection-box h4 {
+            color: #721c24;
+            margin: 0 0 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <table>
+            <tr>
+                <td class="logo-cell">
+                    {% if org.logo %}
+                    <img src="{{ org.logo }}" alt="Logo" style="max-width: 120px;">
+                    {% endif %}
+                </td>
+                <td class="org-info">
+                    <div class="org-name">{{ org.nom }}</div>
+                    <div class="org-address">
+                        {{ org.adresse }}<br>
+                        {{ org.ville }}, {{ org.pays }}<br>
+                        {{ org.site_web }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="document-title">Note de Frais</div>
+    <div class="document-number">
+        <strong>{{ note.numero }}</strong>
+        <br>
+        <span class="status-badge status-{{ note.statut }}">
+            {% if note.statut == 'brouillon' %}Brouillon
+            {% elif note.statut == 'soumis' %}En attente
+            {% elif note.statut == 'approuve' %}Approuvé
+            {% elif note.statut == 'rejete' %}Rejeté
+            {% elif note.statut == 'rembourse' %}Remboursé
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="info-section">
+        <h3>Informations de la dépense</h3>
+        <table class="info-table">
+            <tr>
+                <td class="label">Date de la dépense</td>
+                <td>{{ note.date_depense.strftime('%d/%m/%Y') }}</td>
+                <td class="label">Employé</td>
+                <td>{{ note.employe.nom }} {{ note.employe.prenom or '' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Catégorie</td>
+                <td>
+                    {% for cat_code, cat_nom in note.CATEGORIES %}
+                        {% if cat_code == note.categorie %}{{ cat_nom }}{% endif %}
+                    {% endfor %}
+                </td>
+                <td class="label">À rembourser</td>
+                <td>{{ 'Oui' if note.a_rembourser else 'Non' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Projet</td>
+                <td>{{ note.projet.code ~ ' - ' ~ note.projet.nom if note.projet else '-' }}</td>
+                <td class="label">Ligne budgétaire</td>
+                <td>{{ note.ligne_budget.code ~ ' - ' ~ note.ligne_budget.intitule if note.ligne_budget else '-' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="amount">
+        {{ "{:,.0f}".format(note.montant) }} FCFA
+    </div>
+
+    <div class="info-section">
+        <h3>Description / Justification</h3>
+        <div class="description-box">
+            {{ note.description }}
+        </div>
+    </div>
+
+    {% if note.statut == 'rejete' and note.motif_rejet %}
+    <div class="rejection-box">
+        <h4>Motif du rejet</h4>
+        <p>{{ note.motif_rejet }}</p>
+        <small>Rejeté par {{ note.validateur.nom if note.validateur else 'N/A' }} le {{ note.date_validation.strftime('%d/%m/%Y') if note.date_validation else 'N/A' }}</small>
+    </div>
+    {% endif %}
+
+    <div class="signatures">
+        <table>
+            <tr>
+                <td>
+                    <div class="signature-line">
+                        <strong>Demandeur</strong><br>
+                        {{ note.employe.nom }} {{ note.employe.prenom or '' }}<br>
+                        Date: {{ note.date_creation.strftime('%d/%m/%Y') }}
+                    </div>
+                </td>
+                <td>
+                    <div class="signature-line">
+                        <strong>Approbateur</strong><br>
+                        {% if note.validateur %}
+                        {{ note.validateur.nom }} {{ note.validateur.prenom or '' }}<br>
+                        Date: {{ note.date_validation.strftime('%d/%m/%Y') if note.date_validation else '' }}
+                        {% else %}
+                        <br><em>En attente</em>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        {{ org.nom_complet }} | {{ org.adresse }}, {{ org.ville }} | {{ org.site_web }}<br>
+        Document généré le {{ now().strftime('%d/%m/%Y à %H:%M') if now is defined else '' }}
+    </div>
+</body>
+</html>

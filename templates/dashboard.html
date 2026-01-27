@@ -423,6 +423,30 @@
     </div>
 </div>
 
+<!-- Monthly Evolution & Category Distribution -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card h-100">
+            <div class="card-header">
+                <i class="bi bi-graph-up me-2"></i>Évolution Mensuelle des Dépenses (12 mois)
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card h-100">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>Répartition par Catégorie
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Projects & Bailleurs -->
 <div class="row g-4">
     <div class="col-lg-8">
@@ -615,6 +639,113 @@ if (gaugeCtx) {
             }
         }
     });
+}
+
+// Monthly Expenses Chart
+const monthlyCtx = document.getElementById('monthlyChart');
+if (monthlyCtx) {
+    fetch('/api/dashboard/monthly-expenses')
+        .then(response => response.json())
+        .then(data => {
+            new Chart(monthlyCtx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Dépenses mensuelles',
+                        data: data.values,
+                        borderColor: '#7D8B6A',
+                        backgroundColor: 'rgba(125, 139, 106, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#7D8B6A',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw.toLocaleString('fr-FR') + ' FCFA';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f0f0f0' },
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                    if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Category Distribution Chart
+const categoryCtx = document.getElementById('categoryChart');
+if (categoryCtx) {
+    fetch('/api/dashboard/category-distribution')
+        .then(response => response.json())
+        .then(data => {
+            const colors = [
+                '#7D8B6A', '#A4B494', '#5A6A4A', '#6B7A5A',
+                '#8B9B7A', '#4A5A3A', '#9AAB8A'
+            ];
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.values,
+                        backgroundColor: colors.slice(0, data.labels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = ((context.raw / total) * 100).toFixed(1);
+                                    return context.label + ': ' + context.raw.toLocaleString('fr-FR') + ' FCFA (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
 }
 </script>
 {% endblock %}

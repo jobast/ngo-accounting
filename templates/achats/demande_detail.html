@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}Demande d'Achat {{ demande.numero }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_demandes_achat') }}">Demandes d'Achat</a></li>
+            <li class="breadcrumb-item active">{{ demande.numero }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h2><i class="bi bi-cart-check me-2"></i>{{ demande.numero }}</h2>
+            <p class="text-muted mb-0">
+                {% if demande.statut == 'brouillon' %}
+                <span class="badge bg-secondary fs-6">Brouillon</span>
+                {% elif demande.statut == 'soumis' %}
+                <span class="badge bg-warning text-dark fs-6">
+                    En attente d'approbation
+                    {% if demande.necessite_approbation_directeur %}
+                    <i class="bi bi-star-fill ms-1" title="Nécessite approbation directeur"></i>
+                    {% endif %}
+                </span>
+                {% elif demande.statut == 'approuve' %}
+                <span class="badge bg-success fs-6">Approuvé</span>
+                {% elif demande.statut == 'rejete' %}
+                <span class="badge bg-danger fs-6">Rejeté</span>
+                {% elif demande.statut == 'commande' %}
+                <span class="badge bg-info fs-6">Commandé</span>
+                {% endif %}
+
+                {% if demande.urgence == 'urgent' %}
+                <span class="badge bg-warning text-dark ms-2">Urgent</span>
+                {% elif demande.urgence == 'tres_urgent' %}
+                <span class="badge bg-danger ms-2">Très urgent</span>
+                {% endif %}
+            </p>
+        </div>
+        {% if demande.est_modifiable %}
+        <a href="{{ url_for('modifier_demande_achat', id=demande.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Informations générales -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Informations générales
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">Objet</th>
+                                <td>{{ demande.objet }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Date demande</th>
+                                <td>{{ demande.date_demande.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Demandeur</th>
+                                <td>{{ demande.demandeur.nom }} {{ demande.demandeur.prenom or '' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">Projet</th>
+                                <td>
+                                    {% if demande.projet %}
+                                    <span class="badge bg-primary">{{ demande.projet.code }}</span>
+                                    {{ demande.projet.nom }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Ligne budget</th>
+                                <td>
+                                    {% if demande.ligne_budget %}
+                                    {{ demande.ligne_budget.code }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Approbation</th>
+                                <td>
+                                    {% if demande.necessite_approbation_directeur %}
+                                    <span class="badge bg-warning text-dark">Directeur requis</span>
+                                    <small class="text-muted">(&ge; 500,000 FCFA)</small>
+                                    {% else %}
+                                    <span class="badge bg-info">Comptable</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                {% if demande.description %}
+                <div class="mt-3">
+                    <h6 class="text-muted">Description</h6>
+                    <p class="border rounded p-3 bg-light">{{ demande.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Articles demandés -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-list-ul me-2"></i>Articles demandés
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Désignation</th>
+                                <th class="text-center">Quantité</th>
+                                <th>Unité</th>
+                                <th class="text-end">Prix unit.</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ligne in demande.lignes %}
+                            <tr>
+                                <td>{{ ligne.designation }}</td>
+                                <td class="text-center">{{ ligne.quantite }}</td>
+                                <td>{{ ligne.unite }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(ligne.prix_unitaire_estime) }}</td>
+                                <td class="text-end fw-bold">{{ "{:,.0f}".format(ligne.montant_total) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-primary">
+                                <td colspan="4" class="text-end fw-bold">Total estimé:</td>
+                                <td class="text-end fw-bold fs-5">{{ "{:,.0f}".format(demande.montant_total) }} FCFA</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motif de rejet si applicable -->
+        {% if demande.statut == 'rejete' and demande.motif_rejet %}
+        <div class="alert alert-danger">
+            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Motif du rejet</h6>
+            <p class="mb-0">{{ demande.motif_rejet }}</p>
+            <hr>
+            <small>Rejeté par {{ demande.approbateur.nom if demande.approbateur else 'N/A' }} le {{ demande.date_approbation.strftime('%d/%m/%Y à %H:%M') if demande.date_approbation else 'N/A' }}</small>
+        </div>
+        {% endif %}
+
+        <!-- Bon de commande généré -->
+        {% if demande.statut == 'commande' and demande.bon_commande_id %}
+        <div class="alert alert-success">
+            <h6 class="alert-heading"><i class="bi bi-file-text me-2"></i>Bon de commande généré</h6>
+            <p class="mb-0">
+                <a href="{{ url_for('detail_bon_commande', id=demande.bon_commande_id) }}" class="alert-link">
+                    Voir le bon de commande
+                </a>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <!-- Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-gear me-2"></i>Actions
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if demande.peut_soumettre and demande.demandeur_id == current_user.id %}
+                    <form method="POST" action="{{ url_for('soumettre_demande_achat', id=demande.id) }}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-send me-2"></i>Soumettre pour approbation
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if demande.peut_approuver and current_user.role in ['comptable', 'directeur'] %}
+                        {% if demande.necessite_approbation_directeur and current_user.role != 'directeur' %}
+                        <div class="alert alert-warning small mb-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Cette demande nécessite l'approbation du directeur (montant &ge; 500,000 FCFA)
+                        </div>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('approuver_demande_achat', id=demande.id) }}">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-circle me-2"></i>Approuver
+                            </button>
+                        </form>
+                        {% endif %}
+
+                    <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#modalRejet">
+                        <i class="bi bi-x-circle me-2"></i>Rejeter
+                    </button>
+                    {% endif %}
+
+                    {% if demande.statut == 'approuve' and current_user.role in ['comptable', 'directeur'] %}
+                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalBC">
+                        <i class="bi bi-file-text me-2"></i>Générer bon de commande
+                    </button>
+                    {% endif %}
+
+                    <a href="{{ url_for('liste_demandes_achat') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historique -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>Historique
+            </div>
+            <div class="card-body small">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-plus-circle text-success me-1"></i>
+                        Créée le {{ demande.date_creation.strftime('%d/%m/%Y à %H:%M') }}
+                        <br><small class="text-muted">par {{ demande.cree_par or demande.demandeur.email }}</small>
+                    </li>
+                    {% if demande.date_soumission %}
+                    <li class="mb-2">
+                        <i class="bi bi-send text-primary me-1"></i>
+                        Soumise le {{ demande.date_soumission.strftime('%d/%m/%Y à %H:%M') }}
+                    </li>
+                    {% endif %}
+                    {% if demande.date_approbation %}
+                    <li class="mb-2">
+                        {% if demande.statut in ['approuve', 'commande'] %}
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        Approuvée le {{ demande.date_approbation.strftime('%d/%m/%Y à %H:%M') }}
+                        {% elif demande.statut == 'rejete' %}
+                        <i class="bi bi-x-circle text-danger me-1"></i>
+                        Rejetée le {{ demande.date_approbation.strftime('%d/%m/%Y à %H:%M') }}
+                        {% endif %}
+                        <br><small class="text-muted">par {{ demande.approbateur.nom if demande.approbateur else 'N/A' }}</small>
+                    </li>
+                    {% endif %}
+                    {% if demande.statut == 'commande' %}
+                    <li class="mb-2">
+                        <i class="bi bi-file-text text-info me-1"></i>
+                        Bon de commande généré
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de rejet -->
+{% if demande.peut_approuver and current_user.role in ['comptable', 'directeur'] %}
+<div class="modal fade" id="modalRejet" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('rejeter_demande_achat', id=demande.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rejeter la demande d'achat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Motif du rejet *</label>
+                        <textarea class="form-control" name="motif_rejet" rows="3" required
+                                  placeholder="Expliquez pourquoi cette demande est rejetée..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Rejeter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal de génération BC -->
+{% if demande.statut == 'approuve' and current_user.role in ['comptable', 'directeur'] %}
+<div class="modal fade" id="modalBC" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('generer_bon_commande', id=demande.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Générer un bon de commande</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fournisseur *</label>
+                            <select name="fournisseur_id" class="form-select" required>
+                                <option value="">-- Sélectionner un fournisseur --</option>
+                                {% for fournisseur in fournisseurs %}
+                                <option value="{{ fournisseur.id }}">{{ fournisseur.nom }} ({{ fournisseur.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date de livraison prévue</label>
+                            <input type="date" name="date_livraison" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Conditions de paiement</label>
+                        <input type="text" name="conditions_paiement" class="form-control"
+                               placeholder="Ex: Paiement à 30 jours">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Adresse de livraison</label>
+                        <input type="text" name="adresse_livraison" class="form-control"
+                               placeholder="Ex: Bureau CREATES, Ngaparou">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"
+                                  placeholder="Instructions particulières..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-file-text me-1"></i>Générer le bon de commande
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

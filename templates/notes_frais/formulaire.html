@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{% if note %}Modifier{% else %}Nouvelle{% endif %} Note de Frais - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_notes_frais') }}">Notes de Frais</a></li>
+            <li class="breadcrumb-item active">{% if note %}{{ note.numero }}{% else %}Nouvelle{% endif %}</li>
+        </ol>
+    </nav>
+    <h2>
+        <i class="bi bi-{% if note %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+        {% if note %}Modifier la note {{ note.numero }}{% else %}Nouvelle note de frais{% endif %}
+    </h2>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations principales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Informations de la dépense
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Date de la dépense *</label>
+                            <input type="date" class="form-control" name="date_depense" required
+                                   value="{{ note.date_depense.strftime('%Y-%m-%d') if note else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Montant (FCFA) *</label>
+                            <input type="number" class="form-control" name="montant" required min="0" step="1"
+                                   value="{{ note.montant|int if note else '' }}"
+                                   placeholder="Ex: 25000">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Catégorie *</label>
+                            <select name="categorie" class="form-select" required>
+                                <option value="">-- Sélectionner --</option>
+                                {% for code, nom in categories %}
+                                <option value="{{ code }}" {% if note and note.categorie == code %}selected{% endif %}>{{ nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Projet</label>
+                            <select name="projet_id" id="projet_id" class="form-select">
+                                <option value="">-- Aucun projet --</option>
+                                {% for projet in projets %}
+                                <option value="{{ projet.id }}" {% if note and note.projet_id == projet.id %}selected{% endif %}>
+                                    {{ projet.code }} - {{ projet.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Ligne budgétaire</label>
+                            <select name="ligne_budget_id" id="ligne_budget_id" class="form-select">
+                                <option value="">-- Sélectionner un projet d'abord --</option>
+                                {% if note and note.ligne_budget %}
+                                <option value="{{ note.ligne_budget.id }}" selected>
+                                    {{ note.ligne_budget.code }} - {{ note.ligne_budget.intitule }}
+                                </option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="a_rembourser" id="a_rembourser"
+                                       {% if note is none or note.a_rembourser %}checked{% endif %}>
+                                <label class="form-check-label" for="a_rembourser">
+                                    À rembourser à l'employé
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description / Justification *</label>
+                        <textarea class="form-control" name="description" rows="3" required
+                                  placeholder="Décrivez la dépense et son contexte">{{ note.description if note else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Justificatif -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-paperclip me-2"></i>Justificatif
+                </div>
+                <div class="card-body">
+                    {% if note and note.justificatif %}
+                    <div class="mb-3">
+                        <label class="form-label">Justificatif actuel</label>
+                        <div>
+                            <a href="{{ url_for('serve_upload', filename=note.justificatif) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark me-1"></i>Voir le fichier
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">{% if note and note.justificatif %}Nouveau justificatif{% else %}Justificatif{% endif %}</label>
+                        <input type="file" class="form-control" name="justificatif" accept=".pdf,.jpg,.jpeg,.png">
+                        <div class="form-text">Formats acceptés: PDF, JPG, PNG. Max 16 Mo.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Actions -->
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <i class="bi bi-gear me-2"></i>Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            {% if note %}Enregistrer{% else %}Créer{% endif %}
+                        </button>
+                        <a href="{{ url_for('liste_notes_frais') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if note %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Informations
+                </div>
+                <div class="card-body small">
+                    <p class="mb-1"><strong>Numéro :</strong> {{ note.numero }}</p>
+                    <p class="mb-1"><strong>Créée le :</strong> {{ note.date_creation.strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p class="mb-1"><strong>Par :</strong> {{ note.employe.nom }} {{ note.employe.prenom or '' }}</p>
+                    <p class="mb-0">
+                        <strong>Statut :</strong>
+                        {% if note.statut == 'brouillon' %}
+                        <span class="badge bg-secondary">Brouillon</span>
+                        {% elif note.statut == 'rejete' %}
+                        <span class="badge bg-danger">Rejeté</span>
+                        {% endif %}
+                    </p>
+                    {% if note.statut == 'rejete' and note.motif_rejet %}
+                    <div class="alert alert-danger mt-2 mb-0 small">
+                        <strong>Motif du rejet :</strong><br>
+                        {{ note.motif_rejet }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Charger les lignes budgétaires quand le projet change
+document.getElementById('projet_id').addEventListener('change', function() {
+    const projetId = this.value;
+    const ligneBudgetSelect = document.getElementById('ligne_budget_id');
+
+    ligneBudgetSelect.innerHTML = '<option value="">Chargement...</option>';
+
+    if (!projetId) {
+        ligneBudgetSelect.innerHTML = '<option value="">-- Sélectionner un projet d\'abord --</option>';
+        return;
+    }
+
+    fetch('/api/lignes-budget/' + projetId)
+        .then(response => response.json())
+        .then(data => {
+            let options = '<option value="">-- Sélectionner --</option>';
+            data.forEach(ligne => {
+                options += `<option value="${ligne.id}">${ligne.code} - ${ligne.intitule}</option>`;
+            });
+            ligneBudgetSelect.innerHTML = options;
+        })
+        .catch(error => {
+            ligneBudgetSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        });
+});
+</script>
+{% endblock %}
