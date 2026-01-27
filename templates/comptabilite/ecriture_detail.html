@@ -183,6 +183,14 @@
                     </a>
                     {% endif %}
 
+                    {% if current_user.role in ['comptable', 'directeur'] %}
+                    <form action="{{ url_for('dupliquer_ecriture', id=piece.id) }}" method="POST">
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-copy me-2"></i>Dupliquer
+                        </button>
+                    </form>
+                    {% endif %}
+
                     {% if current_user.role == 'directeur' %}
                         {% if not piece.valide %}
                         <form action="{{ url_for('valider_ecriture', id=piece.id) }}" method="POST">

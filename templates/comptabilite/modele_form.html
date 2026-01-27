@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if modele else 'Nouveau' }} modele - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_modeles_ecritures') }}">Modeles d'ecritures</a></li>
+            <li class="breadcrumb-item active">{{ 'Modifier' if modele else 'Nouveau' }}</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-journal-bookmark me-2"></i>{{ 'Modifier le modele' if modele else 'Nouveau modele d\'ecriture' }}</h2>
+</div>
+
+<form method="POST" id="modeleForm">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Informations generales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations generales</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nom" class="form-label">Nom du modele *</label>
+                            <input type="text" class="form-control" id="nom" name="nom"
+                                   value="{{ modele.nom if modele else '' }}" required
+                                   placeholder="Ex: Loyer mensuel bureau">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="journal_id" class="form-label">Journal *</label>
+                            <select class="form-select" id="journal_id" name="journal_id" required>
+                                <option value="">-- Selectionner --</option>
+                                {% for journal in journaux %}
+                                <option value="{{ journal.id }}"
+                                        {% if modele and modele.journal_id == journal.id %}selected{% endif %}>
+                                    {{ journal.code }} - {{ journal.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="libelle" class="form-label">Libelle de l'ecriture *</label>
+                        <input type="text" class="form-control" id="libelle" name="libelle"
+                               value="{{ modele.libelle if modele else '' }}" required
+                               placeholder="Ex: Loyer bureau Ngaparou - Janvier 2024">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Description optionnelle du modele">{{ modele.description if modele else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="frequence" class="form-label">Frequence</label>
+                            <select class="form-select" id="frequence" name="frequence">
+                                <option value="">-- Aucune --</option>
+                                <option value="mensuel" {% if modele and modele.frequence == 'mensuel' %}selected{% endif %}>Mensuel</option>
+                                <option value="trimestriel" {% if modele and modele.frequence == 'trimestriel' %}selected{% endif %}>Trimestriel</option>
+                                <option value="annuel" {% if modele and modele.frequence == 'annuel' %}selected{% endif %}>Annuel</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="jour_execution" class="form-label">Jour d'execution</label>
+                            <input type="number" class="form-control" id="jour_execution" name="jour_execution"
+                                   value="{{ modele.jour_execution if modele and modele.jour_execution else '' }}"
+                                   min="1" max="31" placeholder="1-31">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="actif" name="actif"
+                                       {% if not modele or modele.actif %}checked{% endif %}>
+                                <label class="form-check-label" for="actif">Modele actif</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lignes du modele -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Lignes de l'ecriture</h5>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="ajouterLigne()">
+                        <i class="bi bi-plus-circle me-1"></i>Ajouter ligne
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table" id="lignesTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%">Compte *</th>
+                                    <th style="width: 15%">Type *</th>
+                                    <th style="width: 15%">Montant</th>
+                                    <th style="width: 20%">Projet</th>
+                                    <th style="width: 15%">Libelle</th>
+                                    <th style="width: 5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lignesBody">
+                                {% if modele and modele.lignes %}
+                                    {% for ligne in modele.lignes %}
+                                    <tr class="ligne-row">
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_compte_id[]" required>
+                                                <option value="">-- Compte --</option>
+                                                {% for compte in comptes %}
+                                                <option value="{{ compte.id }}" {% if ligne.compte_id == compte.id %}selected{% endif %}>
+                                                    {{ compte.numero }} - {{ compte.intitule }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_type[]" required>
+                                                <option value="debit" {% if ligne.type_montant == 'debit' %}selected{% endif %}>Debit</option>
+                                                <option value="credit" {% if ligne.type_montant == 'credit' %}selected{% endif %}>Credit</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm montant-input"
+                                                   name="ligne_montant[]" step="0.01" min="0"
+                                                   value="{{ ligne.montant }}" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_projet_id[]">
+                                                <option value="">-- Aucun --</option>
+                                                {% for projet in projets %}
+                                                <option value="{{ projet.id }}" {% if ligne.projet_id == projet.id %}selected{% endif %}>
+                                                    {{ projet.code }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   name="ligne_libelle[]" value="{{ ligne.libelle or '' }}" placeholder="Libelle">
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Deux lignes par defaut pour nouveau modele -->
+                                    <tr class="ligne-row">
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_compte_id[]" required>
+                                                <option value="">-- Compte --</option>
+                                                {% for compte in comptes %}
+                                                <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_type[]" required>
+                                                <option value="debit">Debit</option>
+                                                <option value="credit">Credit</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm montant-input"
+                                                   name="ligne_montant[]" step="0.01" min="0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_projet_id[]">
+                                                <option value="">-- Aucun --</option>
+                                                {% for projet in projets %}
+                                                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]" placeholder="Libelle">
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr class="ligne-row">
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_compte_id[]" required>
+                                                <option value="">-- Compte --</option>
+                                                {% for compte in comptes %}
+                                                <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_type[]" required>
+                                                <option value="debit">Debit</option>
+                                                <option value="credit" selected>Credit</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm montant-input"
+                                                   name="ligne_montant[]" step="0.01" min="0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="ligne_projet_id[]">
+                                                <option value="">-- Aucun --</option>
+                                                {% for projet in projets %}
+                                                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]" placeholder="Libelle">
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td colspan="2" class="text-end"><strong>Totaux:</strong></td>
+                                    <td>
+                                        <span id="totalDebit" class="text-success fw-bold">0</span> /
+                                        <span id="totalCredit" class="text-danger fw-bold">0</span>
+                                    </td>
+                                    <td colspan="3">
+                                        <span id="equilibreStatus"></span>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>{{ 'Enregistrer' if modele else 'Creer le modele' }}
+                        </button>
+                        <a href="{{ url_for('liste_modeles_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aide -->
+            <div class="card">
+                <div class="card-header">Aide</div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Un modele d'ecriture permet de generer rapidement des ecritures recurrentes.
+                    </p>
+                    <p class="small text-muted mb-2">
+                        <strong>Exemples d'utilisation:</strong>
+                    </p>
+                    <ul class="small text-muted">
+                        <li>Loyer mensuel</li>
+                        <li>Salaires</li>
+                        <li>Abonnements (internet, telephone)</li>
+                        <li>Amortissements</li>
+                    </ul>
+                    <p class="small text-muted mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Les montants peuvent etre laisses a 0 et saisis lors de la generation.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Template pour nouvelle ligne -->
+<template id="ligneTemplate">
+    <tr class="ligne-row">
+        <td>
+            <select class="form-select form-select-sm" name="ligne_compte_id[]" required>
+                <option value="">-- Compte --</option>
+                {% for compte in comptes %}
+                <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <select class="form-select form-select-sm" name="ligne_type[]" required>
+                <option value="debit">Debit</option>
+                <option value="credit">Credit</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm montant-input"
+                   name="ligne_montant[]" step="0.01" min="0" placeholder="0">
+        </td>
+        <td>
+            <select class="form-select form-select-sm" name="ligne_projet_id[]">
+                <option value="">-- Aucun --</option>
+                {% for projet in projets %}
+                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]" placeholder="Libelle">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function ajouterLigne() {
+    const template = document.getElementById('ligneTemplate');
+    const clone = template.content.cloneNode(true);
+    document.getElementById('lignesBody').appendChild(clone);
+    calculerTotaux();
+}
+
+function supprimerLigne(btn) {
+    const rows = document.querySelectorAll('#lignesBody .ligne-row');
+    if (rows.length > 2) {
+        btn.closest('tr').remove();
+        calculerTotaux();
+    } else {
+        alert('Un modele doit avoir au moins 2 lignes.');
+    }
+}
+
+function calculerTotaux() {
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    document.querySelectorAll('#lignesBody .ligne-row').forEach(row => {
+        const type = row.querySelector('select[name="ligne_type[]"]').value;
+        const montant = parseFloat(row.querySelector('input[name="ligne_montant[]"]').value) || 0;
+
+        if (type === 'debit') {
+            totalDebit += montant;
+        } else {
+            totalCredit += montant;
+        }
+    });
+
+    document.getElementById('totalDebit').textContent = totalDebit.toLocaleString('fr-FR');
+    document.getElementById('totalCredit').textContent = totalCredit.toLocaleString('fr-FR');
+
+    const equilibreStatus = document.getElementById('equilibreStatus');
+    if (totalDebit === totalCredit && totalDebit > 0) {
+        equilibreStatus.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Equilibre</span>';
+    } else if (totalDebit === 0 && totalCredit === 0) {
+        equilibreStatus.innerHTML = '<span class="badge bg-secondary">Montants a definir</span>';
+    } else {
+        equilibreStatus.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Non equilibre</span>';
+    }
+}
+
+// Ecouter les changements
+document.addEventListener('change', function(e) {
+    if (e.target.matches('select[name="ligne_type[]"]') || e.target.matches('input[name="ligne_montant[]"]')) {
+        calculerTotaux();
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.matches('input[name="ligne_montant[]"]')) {
+        calculerTotaux();
+    }
+});
+
+// Calcul initial
+document.addEventListener('DOMContentLoaded', calculerTotaux);
+</script>
+{% endblock %}

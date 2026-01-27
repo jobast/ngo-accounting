@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Recherche{% if q %}: {{ q }}{% endif %} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2><i class="bi bi-search me-2"></i>Recherche</h2>
+</div>
+
+<!-- Formulaire de recherche -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('recherche_globale') }}" method="GET">
+            <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" name="q" value="{{ q }}"
+                       placeholder="Rechercher ecritures, projets, fournisseurs, comptes..."
+                       autofocus minlength="2">
+                <button type="submit" class="btn btn-primary">Rechercher</button>
+            </div>
+            <small class="text-muted">Minimum 2 caracteres. Recherche dans: ecritures, projets, bailleurs, fournisseurs, comptes.</small>
+        </form>
+    </div>
+</div>
+
+{% if q and resultats %}
+<!-- Resume des resultats -->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>{{ total }}</strong> resultat(s) pour "<strong>{{ q }}</strong>"
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Ecritures -->
+        {% if resultats.ecritures %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>Ecritures comptables</span>
+                <span class="badge bg-primary">{{ resultats.ecritures|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for ecriture in resultats.ecritures %}
+                <a href="{{ url_for('detail_ecriture', id=ecriture.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ ecriture.numero }}</strong>
+                            <span class="text-muted">-</span>
+                            {{ ecriture.libelle[:50] }}{% if ecriture.libelle|length > 50 %}...{% endif %}
+                            <br>
+                            <small class="text-muted">
+                                {{ ecriture.date_piece.strftime('%d/%m/%Y') }} |
+                                {{ ecriture.journal.code }} |
+                                {{ "{:,.0f}".format(ecriture.total_debit).replace(",", " ") }} FCFA
+                            </small>
+                        </div>
+                        <div>
+                            {% if ecriture.valide %}
+                            <span class="badge bg-success">Validee</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">En attente</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% if resultats.ecritures|length >= 10 %}
+            <div class="card-footer text-center">
+                <a href="{{ url_for('liste_ecritures') }}?search={{ q }}" class="text-decoration-none">
+                    Voir plus d'ecritures <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Projets -->
+        {% if resultats.projets %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder me-2"></i>Projets</span>
+                <span class="badge bg-primary">{{ resultats.projets|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for projet in resultats.projets %}
+                <a href="{{ url_for('detail_projet', id=projet.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-info me-2">{{ projet.code }}</span>
+                            <strong>{{ projet.nom }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                {{ projet.bailleur.nom if projet.bailleur else 'Sans bailleur' }} |
+                                Budget: {{ "{:,.0f}".format(projet.budget_total or 0).replace(",", " ") }} FCFA
+                            </small>
+                        </div>
+                        <span class="badge {% if projet.statut == 'actif' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ projet.statut }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Fournisseurs -->
+        {% if resultats.fournisseurs %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-building me-2"></i>Fournisseurs</span>
+                <span class="badge bg-primary">{{ resultats.fournisseurs|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for fournisseur in resultats.fournisseurs %}
+                <a href="{{ url_for('detail_fournisseur', id=fournisseur.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary me-2">{{ fournisseur.code }}</span>
+                            <strong>{{ fournisseur.nom }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                {% if fournisseur.ninea %}NINEA: {{ fournisseur.ninea }} | {% endif %}
+                                {{ fournisseur.categorie or 'Non categorise' }}
+                            </small>
+                        </div>
+                        {% if fournisseur.actif %}
+                        <span class="badge bg-success">Actif</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactif</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Bailleurs -->
+        {% if resultats.bailleurs %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-2"></i>Bailleurs</span>
+                <span class="badge bg-primary">{{ resultats.bailleurs|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for bailleur in resultats.bailleurs %}
+                <a href="{{ url_for('detail_bailleur', id=bailleur.id) }}" class="list-group-item list-group-item-action">
+                    <div>
+                        <span class="badge bg-info me-2">{{ bailleur.code }}</span>
+                        <strong>{{ bailleur.nom }}</strong>
+                        <br>
+                        <small class="text-muted">
+                            {{ bailleur.pays or 'Pays non specifie' }}
+                        </small>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Comptes -->
+        {% if resultats.comptes %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul me-2"></i>Comptes comptables</span>
+                <span class="badge bg-primary">{{ resultats.comptes|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for compte in resultats.comptes %}
+                <a href="{{ url_for('plan_comptable') }}#compte-{{ compte.numero }}" class="list-group-item list-group-item-action">
+                    <div>
+                        <code class="me-2">{{ compte.numero }}</code>
+                        <strong>{{ compte.intitule }}</strong>
+                        <br>
+                        <small class="text-muted">
+                            Classe {{ compte.classe }} |
+                            {{ compte.type_compte|title if compte.type_compte else '' }}
+                        </small>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if total == 0 %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-search display-4 text-muted"></i>
+                <h5 class="mt-3">Aucun resultat</h5>
+                <p class="text-muted">Aucun element ne correspond a "<strong>{{ q }}</strong>"</p>
+                <p class="text-muted small">Essayez avec d'autres termes ou verifiez l'orthographe.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Aide -->
+        <div class="card">
+            <div class="card-header">Conseils de recherche</div>
+            <div class="card-body small">
+                <p><strong>Vous pouvez rechercher:</strong></p>
+                <ul class="mb-3">
+                    <li>Numero d'ecriture (ex: PC2024001)</li>
+                    <li>Libelle d'ecriture (ex: "loyer")</li>
+                    <li>Code projet (ex: LED, SOR4D)</li>
+                    <li>Nom de fournisseur</li>
+                    <li>NINEA fournisseur</li>
+                    <li>Numero de compte (ex: 6011)</li>
+                </ul>
+                <p class="mb-0 text-muted">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    La recherche n'est pas sensible aux majuscules/minuscules.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif q and not resultats %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-exclamation-circle display-4 text-warning"></i>
+        <h5 class="mt-3">Recherche trop courte</h5>
+        <p class="text-muted">Veuillez entrer au moins 2 caracteres.</p>
+    </div>
+</div>
+
+{% else %}
+<!-- Page d'accueil recherche -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-search display-1 text-muted"></i>
+                <h4 class="mt-4">Recherche globale</h4>
+                <p class="text-muted">
+                    Recherchez dans les ecritures, projets, bailleurs, fournisseurs et comptes comptables.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Raccourcis</div>
+            <div class="list-group list-group-flush">
+                <a href="{{ url_for('liste_ecritures') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-journal-text me-2"></i>Ecritures
+                </a>
+                <a href="{{ url_for('liste_projets') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-folder me-2"></i>Projets
+                </a>
+                <a href="{{ url_for('liste_fournisseurs') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-building me-2"></i>Fournisseurs
+                </a>
+                <a href="{{ url_for('plan_comptable') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-ul me-2"></i>Plan comptable
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

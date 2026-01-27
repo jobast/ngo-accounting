@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Modèles d'Écritures - CREATES{% endblock %}
+{% block title %}Modeles d'Ecritures - CREATES{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-journal-bookmark"></i> Modèles d'Écritures Récurrentes</h2>
+    <h2><i class="bi bi-journal-bookmark"></i> Modeles d'Ecritures Recurrentes</h2>
+    {% if current_user.role in ['comptable', 'directeur'] %}
+    <a href="{{ url_for('nouveau_modele_ecriture') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>Nouveau modele
+    </a>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -16,9 +21,9 @@
                     <tr>
                         <th>Nom</th>
                         <th>Journal</th>
-                        <th>Libellé</th>
-                        <th>Fréquence</th>
-                        <th>Dernière exécution</th>
+                        <th>Libelle</th>
+                        <th>Frequence</th>
+                        <th>Derniere execution</th>
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
@@ -26,9 +31,13 @@
                 <tbody>
                     {% for modele in modeles %}
                     <tr>
-                        <td><strong>{{ modele.nom }}</strong></td>
+                        <td>
+                            <a href="{{ url_for('detail_modele_ecriture', id=modele.id) }}">
+                                <strong>{{ modele.nom }}</strong>
+                            </a>
+                        </td>
                         <td>{{ modele.journal.code }}</td>
-                        <td>{{ modele.libelle }}</td>
+                        <td>{{ modele.libelle[:40] }}{% if modele.libelle|length > 40 %}...{% endif %}</td>
                         <td>
                             {% if modele.frequence == 'mensuel' %}
                             <span class="badge bg-info">Mensuel</span>
@@ -36,6 +45,8 @@
                             <span class="badge bg-warning text-dark">Trimestriel</span>
                             {% elif modele.frequence == 'annuel' %}
                             <span class="badge bg-secondary">Annuel</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td>{{ modele.derniere_execution.strftime('%d/%m/%Y') if modele.derniere_execution else '-' }}</td>
@@ -47,13 +58,31 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if modele.actif %}
-                            <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-play-fill"></i> Générer
-                                </button>
-                            </form>
-                            {% endif %}
+                            <div class="btn-group btn-group-sm">
+                                {% if modele.actif %}
+                                <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-success" title="Generer ecriture">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <a href="{{ url_for('detail_modele_ecriture', id=modele.id) }}" class="btn btn-outline-primary" title="Voir">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if current_user.role in ['comptable', 'directeur'] %}
+                                <a href="{{ url_for('modifier_modele_ecriture', id=modele.id) }}" class="btn btn-outline-secondary" title="Modifier">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                                {% if current_user.role == 'directeur' %}
+                                <form method="POST" action="{{ url_for('supprimer_modele_ecriture', id=modele.id) }}"
+                                      class="d-inline" onsubmit="return confirm('Supprimer ce modele ?');">
+                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -63,11 +92,16 @@
         {% else %}
         <div class="text-center py-5">
             <i class="bi bi-journal-bookmark display-4 text-muted"></i>
-            <p class="text-muted mt-3">Aucun modèle d'écriture défini.</p>
+            <p class="text-muted mt-3">Aucun modele d'ecriture defini.</p>
             <p class="text-muted">
-                Les modèles permettent de générer rapidement des écritures récurrentes
+                Les modeles permettent de generer rapidement des ecritures recurrentes
                 (loyer mensuel, salaires, abonnements, etc.)
             </p>
+            {% if current_user.role in ['comptable', 'directeur'] %}
+            <a href="{{ url_for('nouveau_modele_ecriture') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Creer un modele
+            </a>
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -75,17 +109,17 @@
 
 <div class="mt-4">
     <div class="card">
-        <div class="card-header">À propos des modèles</div>
+        <div class="card-header">A propos des modeles</div>
         <div class="card-body">
-            <p>Les modèles d'écritures permettent de:</p>
+            <p>Les modeles d'ecritures permettent de:</p>
             <ul>
-                <li>Sauvegarder des écritures types pour les opérations récurrentes</li>
-                <li>Générer rapidement une nouvelle écriture à partir d'un modèle</li>
-                <li>Gagner du temps sur les saisies répétitives</li>
+                <li>Sauvegarder des ecritures types pour les operations recurrentes</li>
+                <li>Generer rapidement une nouvelle ecriture a partir d'un modele</li>
+                <li>Gagner du temps sur les saisies repetitives</li>
             </ul>
-            <p class="text-muted">
-                <i class="bi bi-info-circle"></i>
-                Pour créer un modèle, contactez l'administrateur ou créez-le directement dans la base de données.
+            <p class="text-muted mb-0">
+                <i class="bi bi-lightbulb me-1"></i>
+                <strong>Astuce:</strong> Creez des modeles pour le loyer, les salaires, les abonnements recurrents.
             </p>
         </div>
     </div>

@@ -2406,6 +2406,72 @@ def invalider_ecriture(id):
     return redirect(url_for('detail_ecriture', id=id))
 
 
+@app.route('/comptabilite/ecritures/<int:id>/dupliquer', methods=['POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def dupliquer_ecriture(id):
+    """Dupliquer une écriture comptable existante"""
+    piece_origine = PieceComptable.query.get_or_404(id)
+
+    # Vérifier qu'un exercice est ouvert
+    exercice = ExerciceComptable.query.filter_by(cloture=False).first()
+    if not exercice:
+        flash('Aucun exercice ouvert. Impossible de dupliquer.', 'danger')
+        return redirect(url_for('detail_ecriture', id=id))
+
+    # Générer nouveau numéro
+    dernier = PieceComptable.query.order_by(PieceComptable.id.desc()).first()
+    numero = f"PC{datetime.now().year}{(dernier.id + 1 if dernier else 1):05d}"
+
+    # Créer la nouvelle pièce
+    nouvelle_piece = PieceComptable(
+        numero=numero,
+        date_piece=date.today(),
+        journal_id=piece_origine.journal_id,
+        exercice_id=exercice.id,
+        libelle=piece_origine.libelle,
+        reference=None,  # Nouvelle référence à saisir
+        devise_id=piece_origine.devise_id,
+        taux_change=piece_origine.taux_change,
+        valide=False  # Nouvelle écriture non validée
+    )
+    db.session.add(nouvelle_piece)
+    db.session.flush()
+
+    # Dupliquer les lignes
+    for ligne_origine in piece_origine.lignes:
+        nouvelle_ligne = LigneEcriture(
+            piece_id=nouvelle_piece.id,
+            compte_id=ligne_origine.compte_id,
+            projet_id=ligne_origine.projet_id,
+            libelle=ligne_origine.libelle,
+            debit=ligne_origine.debit,
+            credit=ligne_origine.credit,
+            ligne_budget_id=ligne_origine.ligne_budget_id
+        )
+        db.session.add(nouvelle_ligne)
+        db.session.flush()
+
+        # Dupliquer les imputations analytiques si présentes
+        if ligne_origine.imputations_analytiques:
+            for imp in ligne_origine.imputations_analytiques:
+                nouvelle_imp = ImputationAnalytique(
+                    ligne_ecriture_id=nouvelle_ligne.id,
+                    projet_id=imp.projet_id,
+                    pourcentage=imp.pourcentage,
+                    montant=imp.montant
+                )
+                db.session.add(nouvelle_imp)
+
+    db.session.commit()
+
+    log_audit('pieces', nouvelle_piece.id, 'CREATE',
+              new_values={'duplique_de': piece_origine.numero})
+
+    flash(f'Écriture dupliquée avec succès. Nouvelle écriture: {numero}', 'success')
+    return redirect(url_for('modifier_ecriture', id=nouvelle_piece.id))
+
+
 @app.route('/comptabilite/ecritures/valider-lot', methods=['POST'])
 @login_required
 @role_required(['directeur'])
@@ -4461,6 +4527,125 @@ def liste_modeles_ecritures():
     return render_template('comptabilite/modeles_ecritures.html', modeles=modeles)
 
 
+@app.route('/comptabilite/modeles/nouveau', methods=['GET', 'POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def nouveau_modele_ecriture():
+    """Créer un nouveau modèle d'écriture"""
+    journaux = Journal.query.all()
+    comptes = CompteComptable.query.order_by(CompteComptable.numero).all()
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        modele = ModeleEcriture(
+            nom=request.form['nom'],
+            description=request.form.get('description'),
+            journal_id=request.form['journal_id'],
+            libelle=request.form['libelle'],
+            frequence=request.form.get('frequence'),
+            jour_execution=request.form.get('jour_execution') or None,
+            actif=request.form.get('actif') == 'on',
+            cree_par=current_user.email
+        )
+        db.session.add(modele)
+        db.session.flush()
+
+        # Ajouter les lignes
+        comptes_ids = request.form.getlist('ligne_compte_id[]')
+        types = request.form.getlist('ligne_type[]')
+        montants = request.form.getlist('ligne_montant[]')
+        libelles = request.form.getlist('ligne_libelle[]')
+        projets_ids = request.form.getlist('ligne_projet_id[]')
+
+        for i in range(len(comptes_ids)):
+            if comptes_ids[i]:
+                ligne = LigneModeleEcriture(
+                    modele_id=modele.id,
+                    compte_id=int(comptes_ids[i]),
+                    type_montant=types[i] if i < len(types) else 'debit',
+                    montant=Decimal(montants[i]) if i < len(montants) and montants[i] else 0,
+                    libelle=libelles[i] if i < len(libelles) else '',
+                    projet_id=int(projets_ids[i]) if i < len(projets_ids) and projets_ids[i] else None
+                )
+                db.session.add(ligne)
+
+        db.session.commit()
+        flash(f'Modèle "{modele.nom}" créé avec succès', 'success')
+        return redirect(url_for('liste_modeles_ecritures'))
+
+    return render_template('comptabilite/modele_form.html',
+                           journaux=journaux, comptes=comptes, projets=projets)
+
+
+@app.route('/comptabilite/modeles/<int:id>')
+@login_required
+def detail_modele_ecriture(id):
+    """Détail d'un modèle d'écriture"""
+    modele = ModeleEcriture.query.get_or_404(id)
+    return render_template('comptabilite/modele_detail.html', modele=modele)
+
+
+@app.route('/comptabilite/modeles/<int:id>/modifier', methods=['GET', 'POST'])
+@login_required
+@role_required(['comptable', 'directeur'])
+def modifier_modele_ecriture(id):
+    """Modifier un modèle d'écriture"""
+    modele = ModeleEcriture.query.get_or_404(id)
+    journaux = Journal.query.all()
+    comptes = CompteComptable.query.order_by(CompteComptable.numero).all()
+    projets = Projet.query.filter_by(statut='actif').all()
+
+    if request.method == 'POST':
+        modele.nom = request.form['nom']
+        modele.description = request.form.get('description')
+        modele.journal_id = request.form['journal_id']
+        modele.libelle = request.form['libelle']
+        modele.frequence = request.form.get('frequence')
+        modele.jour_execution = request.form.get('jour_execution') or None
+        modele.actif = request.form.get('actif') == 'on'
+
+        # Supprimer anciennes lignes et recréer
+        LigneModeleEcriture.query.filter_by(modele_id=modele.id).delete()
+
+        comptes_ids = request.form.getlist('ligne_compte_id[]')
+        types = request.form.getlist('ligne_type[]')
+        montants = request.form.getlist('ligne_montant[]')
+        libelles = request.form.getlist('ligne_libelle[]')
+        projets_ids = request.form.getlist('ligne_projet_id[]')
+
+        for i in range(len(comptes_ids)):
+            if comptes_ids[i]:
+                ligne = LigneModeleEcriture(
+                    modele_id=modele.id,
+                    compte_id=int(comptes_ids[i]),
+                    type_montant=types[i] if i < len(types) else 'debit',
+                    montant=Decimal(montants[i]) if i < len(montants) and montants[i] else 0,
+                    libelle=libelles[i] if i < len(libelles) else '',
+                    projet_id=int(projets_ids[i]) if i < len(projets_ids) and projets_ids[i] else None
+                )
+                db.session.add(ligne)
+
+        db.session.commit()
+        flash(f'Modèle "{modele.nom}" modifié avec succès', 'success')
+        return redirect(url_for('liste_modeles_ecritures'))
+
+    return render_template('comptabilite/modele_form.html',
+                           modele=modele, journaux=journaux, comptes=comptes, projets=projets)
+
+
+@app.route('/comptabilite/modeles/<int:id>/supprimer', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def supprimer_modele_ecriture(id):
+    """Supprimer un modèle d'écriture"""
+    modele = ModeleEcriture.query.get_or_404(id)
+    nom = modele.nom
+    db.session.delete(modele)
+    db.session.commit()
+    flash(f'Modèle "{nom}" supprimé', 'success')
+    return redirect(url_for('liste_modeles_ecritures'))
+
+
 @app.route('/comptabilite/modeles/<int:id>/generer', methods=['POST'])
 @login_required
 @role_required(['comptable', 'directeur'])
@@ -5458,6 +5643,137 @@ def calculer_soldes_classe(classes, exercice_id=None, type_solde=None, inclure_n
             })
 
     return resultats
+
+
+# =============================================================================
+# ROUTES - RECHERCHE GLOBALE
+# =============================================================================
+
+@app.route('/recherche')
+@login_required
+def recherche_globale():
+    """Recherche globale dans l'application"""
+    q = request.args.get('q', '').strip()
+
+    if not q or len(q) < 2:
+        return render_template('recherche/resultats.html', q=q, resultats=None)
+
+    resultats = {
+        'ecritures': [],
+        'projets': [],
+        'bailleurs': [],
+        'fournisseurs': [],
+        'comptes': []
+    }
+
+    # Recherche dans les écritures
+    ecritures = PieceComptable.query.filter(
+        db.or_(
+            PieceComptable.numero.ilike(f'%{q}%'),
+            PieceComptable.libelle.ilike(f'%{q}%'),
+            PieceComptable.reference.ilike(f'%{q}%')
+        )
+    ).order_by(PieceComptable.date_piece.desc()).limit(10).all()
+    resultats['ecritures'] = ecritures
+
+    # Recherche dans les projets
+    projets = Projet.query.filter(
+        db.or_(
+            Projet.code.ilike(f'%{q}%'),
+            Projet.nom.ilike(f'%{q}%'),
+            Projet.description.ilike(f'%{q}%')
+        )
+    ).limit(10).all()
+    resultats['projets'] = projets
+
+    # Recherche dans les bailleurs
+    bailleurs = Bailleur.query.filter(
+        db.or_(
+            Bailleur.code.ilike(f'%{q}%'),
+            Bailleur.nom.ilike(f'%{q}%')
+        )
+    ).limit(10).all()
+    resultats['bailleurs'] = bailleurs
+
+    # Recherche dans les fournisseurs
+    fournisseurs = Fournisseur.query.filter(
+        db.or_(
+            Fournisseur.code.ilike(f'%{q}%'),
+            Fournisseur.nom.ilike(f'%{q}%'),
+            Fournisseur.ninea.ilike(f'%{q}%')
+        )
+    ).limit(10).all()
+    resultats['fournisseurs'] = fournisseurs
+
+    # Recherche dans les comptes
+    comptes = CompteComptable.query.filter(
+        db.or_(
+            CompteComptable.numero.ilike(f'%{q}%'),
+            CompteComptable.intitule.ilike(f'%{q}%')
+        )
+    ).order_by(CompteComptable.numero).limit(10).all()
+    resultats['comptes'] = comptes
+
+    # Compter le total
+    total = sum(len(v) for v in resultats.values())
+
+    return render_template('recherche/resultats.html', q=q, resultats=resultats, total=total)
+
+
+@app.route('/api/recherche')
+@login_required
+def api_recherche():
+    """API de recherche rapide pour autocompletion"""
+    q = request.args.get('q', '').strip()
+
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    suggestions = []
+
+    # Écritures (max 3)
+    ecritures = PieceComptable.query.filter(
+        db.or_(
+            PieceComptable.numero.ilike(f'%{q}%'),
+            PieceComptable.libelle.ilike(f'%{q}%')
+        )
+    ).limit(3).all()
+    for e in ecritures:
+        suggestions.append({
+            'type': 'ecriture',
+            'label': f'{e.numero} - {e.libelle[:30]}',
+            'url': url_for('detail_ecriture', id=e.id)
+        })
+
+    # Projets (max 3)
+    projets = Projet.query.filter(
+        db.or_(
+            Projet.code.ilike(f'%{q}%'),
+            Projet.nom.ilike(f'%{q}%')
+        )
+    ).limit(3).all()
+    for p in projets:
+        suggestions.append({
+            'type': 'projet',
+            'label': f'{p.code} - {p.nom[:30]}',
+            'url': url_for('detail_projet', id=p.id)
+        })
+
+    # Fournisseurs (max 2)
+    fournisseurs = Fournisseur.query.filter(
+        db.or_(
+            Fournisseur.code.ilike(f'%{q}%'),
+            Fournisseur.nom.ilike(f'%{q}%')
+        )
+    ).limit(2).all()
+    for f in fournisseurs:
+        suggestions.append({
+            'type': 'fournisseur',
+            'label': f'{f.code} - {f.nom[:30]}',
+            'url': url_for('detail_fournisseur', id=f.id)
+        })
+
+    return jsonify(suggestions)
 
 
 # =============================================================================

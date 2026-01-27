@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Modele: {{ modele.nom }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_modeles_ecritures') }}">Modeles d'ecritures</a></li>
+            <li class="breadcrumb-item active">{{ modele.nom }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-journal-bookmark me-2"></i>{{ modele.nom }}</h2>
+        <div>
+            {% if modele.actif %}
+            <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-play-fill me-1"></i>Generer ecriture
+                </button>
+            </form>
+            {% endif %}
+            {% if current_user.role in ['comptable', 'directeur'] %}
+            <a href="{{ url_for('modifier_modele_ecriture', id=modele.id) }}" class="btn btn-primary">
+                <i class="bi bi-pencil me-1"></i>Modifier
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Informations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Informations</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Journal:</strong> {{ modele.journal.code }} - {{ modele.journal.nom }}</p>
+                        <p><strong>Libelle:</strong> {{ modele.libelle }}</p>
+                        {% if modele.description %}
+                        <p><strong>Description:</strong> {{ modele.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Frequence:</strong>
+                            {% if modele.frequence == 'mensuel' %}
+                            <span class="badge bg-info">Mensuel</span>
+                            {% elif modele.frequence == 'trimestriel' %}
+                            <span class="badge bg-warning text-dark">Trimestriel</span>
+                            {% elif modele.frequence == 'annuel' %}
+                            <span class="badge bg-secondary">Annuel</span>
+                            {% else %}
+                            <span class="text-muted">Non definie</span>
+                            {% endif %}
+                            {% if modele.jour_execution %}
+                            (jour {{ modele.jour_execution }})
+                            {% endif %}
+                        </p>
+                        <p>
+                            <strong>Statut:</strong>
+                            {% if modele.actif %}
+                            <span class="badge bg-success">Actif</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactif</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Derniere execution:</strong> {{ modele.derniere_execution.strftime('%d/%m/%Y') if modele.derniere_execution else 'Jamais' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lignes du modele -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Lignes de l'ecriture</h5>
+            </div>
+            <div class="card-body">
+                {% if modele.lignes %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Compte</th>
+                                <th>Libelle</th>
+                                <th>Projet</th>
+                                <th class="text-end">Debit</th>
+                                <th class="text-end">Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set total_debit = namespace(value=0) %}
+                            {% set total_credit = namespace(value=0) %}
+                            {% for ligne in modele.lignes %}
+                            <tr>
+                                <td>
+                                    <strong>{{ ligne.compte.numero }}</strong>
+                                    <br><small class="text-muted">{{ ligne.compte.intitule }}</small>
+                                </td>
+                                <td>{{ ligne.libelle or '-' }}</td>
+                                <td>
+                                    {% if ligne.projet %}
+                                    <span class="badge bg-info">{{ ligne.projet.code }}</span>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if ligne.type_montant == 'debit' %}
+                                    {{ "{:,.0f}".format(ligne.montant).replace(",", " ") }}
+                                    {% set total_debit.value = total_debit.value + ligne.montant %}
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if ligne.type_montant == 'credit' %}
+                                    {{ "{:,.0f}".format(ligne.montant).replace(",", " ") }}
+                                    {% set total_credit.value = total_credit.value + ligne.montant %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td colspan="3">Total</td>
+                                <td class="text-end">{{ "{:,.0f}".format(total_debit.value).replace(",", " ") }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(total_credit.value).replace(",", " ") }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">Aucune ligne definie pour ce modele.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Metadonnees -->
+        <div class="card mb-4">
+            <div class="card-header">Metadonnees</div>
+            <div class="card-body">
+                <p class="mb-1"><small class="text-muted">Cree par:</small></p>
+                <p>{{ modele.cree_par or 'Inconnu' }}</p>
+                <p class="mb-1"><small class="text-muted">Date de creation:</small></p>
+                <p>{{ modele.date_creation.strftime('%d/%m/%Y %H:%M') if modele.date_creation else '-' }}</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">Actions</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if modele.actif %}
+                    <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-play-fill me-1"></i>Generer une ecriture
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if current_user.role in ['comptable', 'directeur'] %}
+                    <a href="{{ url_for('modifier_modele_ecriture', id=modele.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i>Modifier le modele
+                    </a>
+                    {% endif %}
+                    {% if current_user.role == 'directeur' %}
+                    <form method="POST" action="{{ url_for('supprimer_modele_ecriture', id=modele.id) }}"
+                          onsubmit="return confirm('Supprimer ce modele ?');">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-trash me-1"></i>Supprimer
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('liste_modeles_ecritures') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Retour a la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

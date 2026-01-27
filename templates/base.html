@@ -152,6 +152,11 @@
         .badge-actif { background-color: var(--secondary-color); }
         .badge-cloture { background-color: #6c757d; }
 
+        /* Recherche sidebar */
+        .sidebar input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -172,8 +177,23 @@
         <div class="logo">
             <img src="{{ url_for('static', filename='img/logo.png') }}" alt="CREATES" style="width: 60px; height: auto; margin-bottom: 10px;">
             <h4>{{ org.nom }}</h4>
-            <small>Système Comptable</small>
+            <small>Systeme Comptable</small>
         </div>
+        <!-- Recherche globale -->
+        {% if current_user.is_authenticated %}
+        <div class="px-3 py-2">
+            <form action="{{ url_for('recherche_globale') }}" method="GET">
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" name="q" placeholder="Rechercher..."
+                           style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;"
+                           minlength="2">
+                    <button type="submit" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
