@@ -4,8 +4,9 @@
 
 {% block extra_css %}
 <style>
+    /* CREATES Brand Colors for Dashboard */
     .welcome-banner {
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        background: linear-gradient(135deg, var(--creates-primary) 0%, var(--creates-primary-dark) 100%);
         color: white;
         border-radius: 15px;
         padding: 25px 30px;
@@ -41,20 +42,26 @@
         justify-content: center;
         font-size: 24px;
     }
+    /* CREATES-branded icon boxes */
+    .kpi-card .icon-box.creates-budget { background: rgba(123, 139, 111, 0.15); color: var(--creates-primary); }
+    .kpi-card .icon-box.creates-realise { background: rgba(93, 138, 102, 0.15); color: var(--creates-success); }
+    .kpi-card .icon-box.creates-projets { background: rgba(196, 163, 90, 0.15); color: var(--creates-warning); }
+    .kpi-card .icon-box.creates-ecritures { background: rgba(90, 122, 138, 0.15); color: var(--creates-info); }
+
     .kpi-card .label {
         font-size: 13px;
-        color: #6c757d;
+        color: var(--creates-text-muted);
         margin-bottom: 5px;
     }
     .kpi-card .value {
         font-size: 26px;
         font-weight: 700;
-        color: #212529;
+        color: var(--creates-text);
     }
     .kpi-card .value small {
         font-size: 14px;
         font-weight: 400;
-        color: #6c757d;
+        color: var(--creates-text-muted);
     }
 
     .quick-action-btn {
@@ -63,16 +70,16 @@
         padding: 15px 20px;
         border-radius: 10px;
         background: white;
-        border: 1px solid #e9ecef;
-        color: #495057;
+        border: 1px solid var(--creates-border);
+        color: var(--creates-text);
         text-decoration: none;
         transition: all 0.2s;
         margin-bottom: 10px;
     }
     .quick-action-btn:hover {
-        background: var(--primary-color);
+        background: var(--creates-primary);
         color: white;
-        border-color: var(--primary-color);
+        border-color: var(--creates-primary);
         transform: translateX(5px);
     }
     .quick-action-btn .action-icon {
@@ -85,8 +92,16 @@
         font-size: 18px;
         margin-right: 15px;
     }
+    /* CREATES-branded action icons */
+    .quick-action-btn .action-icon.creates-op { background: rgba(93, 138, 102, 0.15); color: var(--creates-success); }
+    .quick-action-btn .action-icon.creates-journal { background: rgba(123, 139, 111, 0.15); color: var(--creates-primary); }
+    .quick-action-btn .action-icon.creates-balance { background: rgba(196, 163, 90, 0.15); color: var(--creates-warning); }
+    .quick-action-btn .action-icon.creates-rapports { background: rgba(184, 92, 92, 0.15); color: var(--creates-danger); }
+    .quick-action-btn .action-icon.creates-banque { background: rgba(90, 122, 138, 0.15); color: var(--creates-info); }
+
     .quick-action-btn:hover .action-icon {
         background: rgba(255,255,255,0.2) !important;
+        color: white !important;
     }
 
     .chart-card {
@@ -97,16 +112,17 @@
     }
     .chart-card .card-header {
         background: transparent;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--creates-border);
         padding: 15px 20px;
         font-weight: 600;
+        color: var(--creates-text);
     }
     .chart-card .card-body {
         padding: 20px;
     }
 
     .treasury-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--creates-primary) 0%, var(--creates-primary-dark) 100%);
         border-radius: 12px;
         padding: 20px;
         color: white;
@@ -122,7 +138,7 @@
 
     .project-progress-item {
         padding: 12px 0;
-        border-bottom: 1px solid #f5f5f5;
+        border-bottom: 1px solid var(--creates-border);
     }
     .project-progress-item:last-child {
         border-bottom: none;
@@ -130,6 +146,7 @@
     .project-progress-item .progress {
         height: 8px;
         border-radius: 4px;
+        background-color: rgba(123, 139, 111, 0.1);
     }
 
     .alert-item {
@@ -140,16 +157,16 @@
         margin-bottom: 10px;
     }
     .alert-item.warning {
-        background: #fff8e1;
-        border-left: 4px solid #ffc107;
+        background: rgba(196, 163, 90, 0.12);
+        border-left: 4px solid var(--creates-warning);
     }
     .alert-item.danger {
-        background: #ffebee;
-        border-left: 4px solid #dc3545;
+        background: rgba(184, 92, 92, 0.12);
+        border-left: 4px solid var(--creates-danger);
     }
     .alert-item.info {
-        background: #e3f2fd;
-        border-left: 4px solid #2196f3;
+        background: rgba(90, 122, 138, 0.12);
+        border-left: 4px solid var(--creates-info);
     }
 
     .gauge-container {
@@ -164,6 +181,7 @@
         bottom: 20px;
         font-size: 28px;
         font-weight: 700;
+        color: var(--creates-text);
     }
 </style>
 {% endblock %}
@@ -214,7 +232,7 @@
                     <div class="value">{{ "{:,.0f}".format(stats.budget_total).replace(",", " ") }}</div>
                     <small class="text-muted">FCFA</small>
                 </div>
-                <div class="icon-box" style="background: #e3f2fd; color: #1976d2;">
+                <div class="icon-box creates-budget">
                     <i class="bi bi-wallet2"></i>
                 </div>
             </div>
@@ -228,7 +246,7 @@
                     <div class="value">{{ "{:,.0f}".format(stats.total_realise).replace(",", " ") }}</div>
                     <small class="text-muted">FCFA</small>
                 </div>
-                <div class="icon-box" style="background: #e8f5e9; color: #388e3c;">
+                <div class="icon-box creates-realise">
                     <i class="bi bi-check-circle"></i>
                 </div>
             </div>
@@ -242,7 +260,7 @@
                     <div class="value">{{ stats.nb_projets }}</div>
                     <small class="text-muted">en cours</small>
                 </div>
-                <div class="icon-box" style="background: #fff3e0; color: #f57c00;">
+                <div class="icon-box creates-projets">
                     <i class="bi bi-folder"></i>
                 </div>
             </div>
@@ -256,7 +274,7 @@
                     <div class="value">{{ stats.ecritures_mois }}</div>
                     <small class="text-muted">ce mois</small>
                 </div>
-                <div class="icon-box" style="background: #fce4ec; color: #c2185b;">
+                <div class="icon-box creates-ecritures">
                     <i class="bi bi-journal-text"></i>
                 </div>
             </div>
@@ -370,7 +388,7 @@
             </div>
             <div class="card-body">
                 <a href="{{ url_for('nouvelle_ecriture') }}" class="quick-action-btn">
-                    <div class="action-icon" style="background: #e8f5e9; color: #388e3c;">
+                    <div class="action-icon creates-op">
                         <i class="bi bi-plus-circle"></i>
                     </div>
                     <div>
@@ -380,7 +398,7 @@
                 </a>
 
                 <a href="{{ url_for('liste_ecritures') }}" class="quick-action-btn">
-                    <div class="action-icon" style="background: #e3f2fd; color: #1976d2;">
+                    <div class="action-icon creates-journal">
                         <i class="bi bi-journal-text"></i>
                     </div>
                     <div>
@@ -390,7 +408,7 @@
                 </a>
 
                 <a href="{{ url_for('balance_generale') }}" class="quick-action-btn">
-                    <div class="action-icon" style="background: #fff3e0; color: #f57c00;">
+                    <div class="action-icon creates-balance">
                         <i class="bi bi-calculator"></i>
                     </div>
                     <div>
@@ -400,7 +418,7 @@
                 </a>
 
                 <a href="{{ url_for('rapports') }}" class="quick-action-btn">
-                    <div class="action-icon" style="background: #fce4ec; color: #c2185b;">
+                    <div class="action-icon creates-rapports">
                         <i class="bi bi-file-earmark-bar-graph"></i>
                     </div>
                     <div>
@@ -410,7 +428,7 @@
                 </a>
 
                 <a href="{{ url_for('liste_reconciliations') }}" class="quick-action-btn">
-                    <div class="action-icon" style="background: #ede7f6; color: #5e35b1;">
+                    <div class="action-icon creates-banque">
                         <i class="bi bi-bank"></i>
                     </div>
                     <div>
@@ -540,6 +558,18 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+// CREATES Brand Colors for Charts
+const CREATES_COLORS = {
+    primary: '#7B8B6F',
+    primaryDark: '#5F6B53',
+    primaryLight: '#9BA78D',
+    success: '#5D8A66',
+    warning: '#C4A35A',
+    danger: '#B85C5C',
+    info: '#5A7A8A',
+    muted: '#D8DDD5'
+};
+
 // Budget vs Réalisé Chart
 const budgetCtx = document.getElementById('budgetChart');
 if (budgetCtx) {
@@ -553,16 +583,16 @@ if (budgetCtx) {
                     {
                         label: 'Budget',
                         data: projetsData.map(p => p.prevu),
-                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                        borderColor: 'rgba(102, 126, 234, 1)',
+                        backgroundColor: 'rgba(123, 139, 111, 0.25)',
+                        borderColor: CREATES_COLORS.primary,
                         borderWidth: 2,
                         borderRadius: 4
                     },
                     {
                         label: 'Réalisé',
                         data: projetsData.map(p => p.realise),
-                        backgroundColor: 'rgba(72, 187, 120, 0.8)',
-                        borderColor: 'rgba(72, 187, 120, 1)',
+                        backgroundColor: CREATES_COLORS.success,
+                        borderColor: CREATES_COLORS.success,
                         borderWidth: 2,
                         borderRadius: 4
                     }
@@ -593,7 +623,7 @@ if (budgetCtx) {
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#f0f0f0' },
+                        grid: { color: CREATES_COLORS.muted },
                         ticks: {
                             callback: function(value) {
                                 if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
@@ -614,16 +644,16 @@ if (gaugeCtx) {
     const tauxExecution = {{ stats.taux_execution|default(0) }};
     const remaining = Math.max(0, 100 - tauxExecution);
 
-    let color = '#48bb78'; // green
-    if (tauxExecution > 100) color = '#fc8181'; // red
-    else if (tauxExecution > 80) color = '#f6ad55'; // orange
+    let color = CREATES_COLORS.success;
+    if (tauxExecution > 100) color = CREATES_COLORS.danger;
+    else if (tauxExecution > 80) color = CREATES_COLORS.warning;
 
     new Chart(gaugeCtx, {
         type: 'doughnut',
         data: {
             datasets: [{
                 data: [Math.min(tauxExecution, 100), remaining],
-                backgroundColor: [color, '#e2e8f0'],
+                backgroundColor: [color, CREATES_COLORS.muted],
                 borderWidth: 0
             }]
         },
@@ -654,12 +684,12 @@ if (monthlyCtx) {
                     datasets: [{
                         label: 'Dépenses mensuelles',
                         data: data.values,
-                        borderColor: '#7D8B6A',
-                        backgroundColor: 'rgba(125, 139, 106, 0.1)',
+                        borderColor: CREATES_COLORS.primary,
+                        backgroundColor: 'rgba(123, 139, 111, 0.1)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.3,
-                        pointBackgroundColor: '#7D8B6A',
+                        pointBackgroundColor: CREATES_COLORS.primary,
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
@@ -685,7 +715,7 @@ if (monthlyCtx) {
                         },
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#f0f0f0' },
+                            grid: { color: CREATES_COLORS.muted },
                             ticks: {
                                 callback: function(value) {
                                     if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
@@ -706,9 +736,15 @@ if (categoryCtx) {
     fetch('/api/dashboard/category-distribution')
         .then(response => response.json())
         .then(data => {
+            // CREATES palette for pie/doughnut charts
             const colors = [
-                '#7D8B6A', '#A4B494', '#5A6A4A', '#6B7A5A',
-                '#8B9B7A', '#4A5A3A', '#9AAB8A'
+                CREATES_COLORS.primary,
+                CREATES_COLORS.success,
+                CREATES_COLORS.warning,
+                CREATES_COLORS.info,
+                CREATES_COLORS.primaryLight,
+                CREATES_COLORS.primaryDark,
+                CREATES_COLORS.danger
             ];
             new Chart(categoryCtx, {
                 type: 'doughnut',
