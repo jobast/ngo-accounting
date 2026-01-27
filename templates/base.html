@@ -336,6 +336,11 @@
                     <i class="bi bi-journal-bookmark"></i> Journaux
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'backup' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_backups') }}">
+                    <i class="bi bi-shield-check"></i> Sauvegardes
+                </a>
+            </li>
             {% endif %}
             {% if current_user.is_authenticated and current_user.role in ['directeur', 'auditeur'] %}
             <li class="nav-item">

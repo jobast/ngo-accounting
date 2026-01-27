@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Sauvegardes - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-shield-check me-2"></i>Sauvegardes et Securite</h2>
+</div>
+
+<!-- Resume -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Base de donnees</h6>
+                        <h3 class="mb-0">{{ "%.2f"|format(db_size / 1024 / 1024) }} Mo</h3>
+                    </div>
+                    <i class="bi bi-database fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Sauvegardes</h6>
+                        <h3 class="mb-0">{{ backups|length }}</h3>
+                    </div>
+                    <i class="bi bi-archive fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Derniere sauvegarde</h6>
+                        <h3 class="mb-0">
+                            {% if backups %}
+                            {{ backups[0].created.strftime('%d/%m/%Y') }}
+                            {% else %}
+                            Aucune
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <i class="bi bi-clock-history fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions principales -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions rapides</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <form method="POST" action="{{ url_for('creer_backup') }}">
+                    <button type="submit" class="btn btn-primary w-100 py-3">
+                        <i class="bi bi-download fs-4 d-block mb-2"></i>
+                        Creer une sauvegarde
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('export_donnees_excel') }}" class="btn btn-success w-100 py-3">
+                    <i class="bi bi-file-earmark-excel fs-4 d-block mb-2"></i>
+                    Export Excel complet
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('audit_trail') }}" class="btn btn-outline-secondary w-100 py-3">
+                    <i class="bi bi-clock-history fs-4 d-block mb-2"></i>
+                    Journal d'audit
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des sauvegardes -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-archive me-2"></i>Sauvegardes disponibles</h5>
+        <span class="badge bg-primary">{{ backups|length }} fichier(s)</span>
+    </div>
+    <div class="card-body">
+        {% if backups %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Fichier</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Taille</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                        <td>
+                            <i class="bi bi-file-earmark-zip me-2 text-primary"></i>
+                            <strong>{{ backup.filename }}</strong>
+                        </td>
+                        <td>
+                            {% if backup.type == 'manual' %}
+                            <span class="badge bg-primary">Manuel</span>
+                            {% elif backup.type == 'daily' %}
+                            <span class="badge bg-info">Quotidien</span>
+                            {% elif backup.type == 'weekly' %}
+                            <span class="badge bg-warning text-dark">Hebdo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ backup.created.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ "%.2f"|format(backup.size / 1024 / 1024) }} Mo</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('telecharger_backup', filename=backup.filename) }}"
+                                   class="btn btn-outline-primary" title="Telecharger">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-warning"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#restoreModal"
+                                        data-filename="{{ backup.filename }}"
+                                        data-date="{{ backup.created.strftime('%d/%m/%Y %H:%M') }}"
+                                        title="Restaurer">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('supprimer_backup', filename=backup.filename) }}"
+                                      class="d-inline" onsubmit="return confirm('Supprimer cette sauvegarde ?');">
+                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-archive display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucune sauvegarde disponible</p>
+            <form method="POST" action="{{ url_for('creer_backup') }}">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-download me-2"></i>Creer la premiere sauvegarde
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Informations -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Types de sauvegardes</h6>
+            </div>
+            <div class="card-body small">
+                <ul class="mb-0">
+                    <li><span class="badge bg-primary">Manuel</span> - Cree manuellement, conserve indefiniment</li>
+                    <li><span class="badge bg-info">Quotidien</span> - Automatique chaque jour, conserve 7 jours</li>
+                    <li><span class="badge bg-warning text-dark">Hebdo</span> - Automatique chaque semaine, conserve 4 semaines</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Recommandations</h6>
+            </div>
+            <div class="card-body small">
+                <ul class="mb-0">
+                    <li>Effectuez une sauvegarde avant toute operation importante</li>
+                    <li>Telecharger regulierement les sauvegardes sur un support externe</li>
+                    <li>Testez la restauration periodiquement</li>
+                    <li>Conservez au moins une copie hors site</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de restauration -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Restaurer une sauvegarde</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="restoreForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-octagon me-2"></i>
+                        <strong>Attention!</strong> Cette action va remplacer toutes les donnees actuelles par celles de la sauvegarde selectionnee.
+                    </div>
+                    <p>Vous etes sur le point de restaurer:</p>
+                    <p><strong id="restoreFilename"></strong></p>
+                    <p class="text-muted">Date: <span id="restoreDate"></span></p>
+                    <p class="mb-0">Une sauvegarde de securite sera automatiquement creee avant la restauration.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-counterclockwise me-2"></i>Confirmer la restauration
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Gestion du modal de restauration
+document.getElementById('restoreModal').addEventListener('show.bs.modal', function(event) {
+    var button = event.relatedTarget;
+    var filename = button.getAttribute('data-filename');
+    var date = button.getAttribute('data-date');
+
+    document.getElementById('restoreFilename').textContent = filename;
+    document.getElementById('restoreDate').textContent = date;
+    document.getElementById('restoreForm').action = '{{ url_for("restaurer_backup", filename="PLACEHOLDER") }}'.replace('PLACEHOLDER', filename);
+});
+</script>
+{% endblock %}

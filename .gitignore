@@ -27,6 +27,11 @@ Thumbs.db
 uploads/*
 !uploads/.gitkeep
 
+# Backups (fichiers de sauvegarde)
+backups/**/*.db
+!backups/.gitkeep
+!backups/**/.gitkeep
+
 # Environment
 .env
 .env.local

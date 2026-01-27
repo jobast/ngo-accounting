@@ -13,6 +13,9 @@ from decimal import Decimal
 from functools import wraps
 import os
 import json
+import shutil
+import glob as glob_module
+from io import BytesIO
 
 # SECURITY: Rate limiting
 try:
@@ -5643,6 +5646,376 @@ def calculer_soldes_classe(classes, exercice_id=None, type_solde=None, inclure_n
             })
 
     return resultats
+
+
+# =============================================================================
+# ROUTES - SAUVEGARDES ET BACKUPS
+# =============================================================================
+
+# Configuration des backups
+BACKUP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
+BACKUP_DAILY_FOLDER = os.path.join(BACKUP_FOLDER, 'daily')
+BACKUP_WEEKLY_FOLDER = os.path.join(BACKUP_FOLDER, 'weekly')
+BACKUP_MANUAL_FOLDER = os.path.join(BACKUP_FOLDER, 'manual')
+
+# Créer les dossiers de backup s'ils n'existent pas
+for folder in [BACKUP_FOLDER, BACKUP_DAILY_FOLDER, BACKUP_WEEKLY_FOLDER, BACKUP_MANUAL_FOLDER]:
+    os.makedirs(folder, exist_ok=True)
+
+
+def get_db_path():
+    """Obtenir le chemin de la base de données SQLite"""
+    db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    if db_uri.startswith('sqlite:///'):
+        return db_uri.replace('sqlite:///', '')
+    return None
+
+
+def create_backup(backup_type='manual'):
+    """Créer une sauvegarde de la base de données"""
+    db_path = get_db_path()
+    if not db_path:
+        return None, "Backup uniquement disponible pour SQLite"
+
+    if not os.path.exists(db_path):
+        return None, f"Base de données non trouvée: {db_path}"
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    if backup_type == 'daily':
+        backup_dir = BACKUP_DAILY_FOLDER
+        filename = f"backup_{date.today().isoformat()}.db"
+    elif backup_type == 'weekly':
+        backup_dir = BACKUP_WEEKLY_FOLDER
+        week_num = date.today().isocalendar()[1]
+        filename = f"backup_week_{week_num:02d}.db"
+    else:
+        backup_dir = BACKUP_MANUAL_FOLDER
+        filename = f"backup_{timestamp}.db"
+
+    backup_path = os.path.join(backup_dir, filename)
+
+    try:
+        shutil.copy2(db_path, backup_path)
+        size = os.path.getsize(backup_path)
+        return {
+            'filename': filename,
+            'path': backup_path,
+            'size': size,
+            'created': datetime.now(),
+            'type': backup_type
+        }, None
+    except Exception as e:
+        return None, str(e)
+
+
+def list_backups():
+    """Lister toutes les sauvegardes disponibles"""
+    backups = []
+
+    for backup_type, folder in [('manual', BACKUP_MANUAL_FOLDER),
+                                 ('daily', BACKUP_DAILY_FOLDER),
+                                 ('weekly', BACKUP_WEEKLY_FOLDER)]:
+        if os.path.exists(folder):
+            for filename in os.listdir(folder):
+                if filename.endswith('.db'):
+                    filepath = os.path.join(folder, filename)
+                    stat = os.stat(filepath)
+                    backups.append({
+                        'filename': filename,
+                        'path': filepath,
+                        'type': backup_type,
+                        'size': stat.st_size,
+                        'created': datetime.fromtimestamp(stat.st_mtime)
+                    })
+
+    # Trier par date décroissante
+    backups.sort(key=lambda x: x['created'], reverse=True)
+    return backups
+
+
+def cleanup_old_backups():
+    """Nettoyer les anciennes sauvegardes (rotation)"""
+    # Garder 7 derniers jours de backups daily
+    daily_backups = sorted(glob_module.glob(os.path.join(BACKUP_DAILY_FOLDER, '*.db')),
+                          key=os.path.getmtime, reverse=True)
+    for old_backup in daily_backups[7:]:
+        os.remove(old_backup)
+
+    # Garder 4 dernières semaines de backups weekly
+    weekly_backups = sorted(glob_module.glob(os.path.join(BACKUP_WEEKLY_FOLDER, '*.db')),
+                           key=os.path.getmtime, reverse=True)
+    for old_backup in weekly_backups[4:]:
+        os.remove(old_backup)
+
+
+@app.route('/admin/backups')
+@login_required
+@role_required(['directeur'])
+def liste_backups():
+    """Page de gestion des sauvegardes"""
+    backups = list_backups()
+    db_path = get_db_path()
+    db_size = os.path.getsize(db_path) if db_path and os.path.exists(db_path) else 0
+
+    return render_template('admin/backups.html',
+                           backups=backups,
+                           db_size=db_size)
+
+
+@app.route('/admin/backups/creer', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def creer_backup():
+    """Créer une nouvelle sauvegarde manuelle"""
+    backup, error = create_backup('manual')
+
+    if error:
+        flash(f'Erreur lors de la sauvegarde: {error}', 'danger')
+    else:
+        log_audit('backup', None, 'CREATE', new_values={'filename': backup['filename']})
+        flash(f'Sauvegarde créée: {backup["filename"]}', 'success')
+
+    return redirect(url_for('liste_backups'))
+
+
+@app.route('/admin/backups/telecharger/<path:filename>')
+@login_required
+@role_required(['directeur'])
+def telecharger_backup(filename):
+    """Télécharger un fichier de sauvegarde"""
+    # Sécurité: vérifier que le fichier est dans un dossier autorisé
+    for folder in [BACKUP_MANUAL_FOLDER, BACKUP_DAILY_FOLDER, BACKUP_WEEKLY_FOLDER]:
+        filepath = os.path.join(folder, os.path.basename(filename))
+        if os.path.exists(filepath):
+            log_audit('backup', None, 'DOWNLOAD', new_values={'filename': filename})
+            return send_file(filepath, as_attachment=True,
+                           download_name=f'creates_{filename}')
+
+    flash('Fichier de sauvegarde non trouvé', 'danger')
+    return redirect(url_for('liste_backups'))
+
+
+@app.route('/admin/backups/supprimer/<path:filename>', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def supprimer_backup(filename):
+    """Supprimer un fichier de sauvegarde"""
+    for folder in [BACKUP_MANUAL_FOLDER, BACKUP_DAILY_FOLDER, BACKUP_WEEKLY_FOLDER]:
+        filepath = os.path.join(folder, os.path.basename(filename))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            log_audit('backup', None, 'DELETE', new_values={'filename': filename})
+            flash(f'Sauvegarde supprimée: {filename}', 'success')
+            return redirect(url_for('liste_backups'))
+
+    flash('Fichier de sauvegarde non trouvé', 'danger')
+    return redirect(url_for('liste_backups'))
+
+
+@app.route('/admin/backups/restaurer/<path:filename>', methods=['POST'])
+@login_required
+@role_required(['directeur'])
+def restaurer_backup(filename):
+    """Restaurer depuis une sauvegarde"""
+    db_path = get_db_path()
+    if not db_path:
+        flash('Restauration uniquement disponible pour SQLite', 'danger')
+        return redirect(url_for('liste_backups'))
+
+    # Trouver le fichier backup
+    backup_path = None
+    for folder in [BACKUP_MANUAL_FOLDER, BACKUP_DAILY_FOLDER, BACKUP_WEEKLY_FOLDER]:
+        filepath = os.path.join(folder, os.path.basename(filename))
+        if os.path.exists(filepath):
+            backup_path = filepath
+            break
+
+    if not backup_path:
+        flash('Fichier de sauvegarde non trouvé', 'danger')
+        return redirect(url_for('liste_backups'))
+
+    try:
+        # Créer une sauvegarde avant restauration
+        pre_restore_backup, _ = create_backup('manual')
+
+        # Restaurer
+        shutil.copy2(backup_path, db_path)
+
+        log_audit('backup', None, 'RESTORE', new_values={
+            'restored_from': filename,
+            'pre_restore_backup': pre_restore_backup['filename'] if pre_restore_backup else None
+        })
+
+        flash(f'Base de données restaurée depuis {filename}. '
+              f'Sauvegarde pré-restauration: {pre_restore_backup["filename"] if pre_restore_backup else "N/A"}',
+              'success')
+    except Exception as e:
+        flash(f'Erreur lors de la restauration: {str(e)}', 'danger')
+
+    return redirect(url_for('liste_backups'))
+
+
+@app.route('/admin/backups/export-excel')
+@login_required
+@role_required(['directeur', 'comptable'])
+def export_donnees_excel():
+    """Exporter toutes les données comptables en Excel"""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    except ImportError:
+        flash('Module openpyxl non installé', 'danger')
+        return redirect(url_for('liste_backups'))
+
+    wb = Workbook()
+
+    # Style
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill(start_color='7D8B6A', end_color='7D8B6A', fill_type='solid')
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    def style_header(ws):
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+
+    # === Feuille 1: Écritures ===
+    ws1 = wb.active
+    ws1.title = "Ecritures"
+    ws1.append(['Numero', 'Date', 'Journal', 'Libelle', 'Reference', 'Total Debit', 'Total Credit', 'Valide', 'Exercice'])
+
+    ecritures = PieceComptable.query.order_by(PieceComptable.date_piece.desc()).all()
+    for e in ecritures:
+        ws1.append([
+            e.numero,
+            e.date_piece.strftime('%d/%m/%Y') if e.date_piece else '',
+            e.journal.code if e.journal else '',
+            e.libelle,
+            e.reference or '',
+            float(e.total_debit),
+            float(e.total_credit),
+            'Oui' if e.valide else 'Non',
+            e.exercice.annee if e.exercice else ''
+        ])
+    style_header(ws1)
+
+    # === Feuille 2: Lignes d'écritures ===
+    ws2 = wb.create_sheet("Lignes Ecritures")
+    ws2.append(['Piece', 'Date', 'Compte', 'Intitule Compte', 'Libelle', 'Projet', 'Debit', 'Credit'])
+
+    lignes = LigneEcriture.query.join(PieceComptable).order_by(PieceComptable.date_piece.desc()).all()
+    for l in lignes:
+        ws2.append([
+            l.piece.numero if l.piece else '',
+            l.piece.date_piece.strftime('%d/%m/%Y') if l.piece and l.piece.date_piece else '',
+            l.compte.numero if l.compte else '',
+            l.compte.intitule if l.compte else '',
+            l.libelle or '',
+            l.projet.code if l.projet else '',
+            float(l.debit) if l.debit else 0,
+            float(l.credit) if l.credit else 0
+        ])
+    style_header(ws2)
+
+    # === Feuille 3: Projets ===
+    ws3 = wb.create_sheet("Projets")
+    ws3.append(['Code', 'Nom', 'Bailleur', 'Date Debut', 'Date Fin', 'Budget Total', 'Statut'])
+
+    projets = Projet.query.all()
+    for p in projets:
+        ws3.append([
+            p.code,
+            p.nom,
+            p.bailleur.nom if p.bailleur else '',
+            p.date_debut.strftime('%d/%m/%Y') if p.date_debut else '',
+            p.date_fin.strftime('%d/%m/%Y') if p.date_fin else '',
+            float(p.budget_total) if p.budget_total else 0,
+            p.statut
+        ])
+    style_header(ws3)
+
+    # === Feuille 4: Lignes budgétaires ===
+    ws4 = wb.create_sheet("Lignes Budget")
+    ws4.append(['Projet', 'Code', 'Libelle', 'Categorie', 'Montant Prevu'])
+
+    lignes_budget = LigneBudget.query.all()
+    for lb in lignes_budget:
+        ws4.append([
+            lb.projet.code if lb.projet else '',
+            lb.code,
+            lb.libelle,
+            lb.categorie.nom if lb.categorie else '',
+            float(lb.montant_prevu) if lb.montant_prevu else 0
+        ])
+    style_header(ws4)
+
+    # === Feuille 5: Bailleurs ===
+    ws5 = wb.create_sheet("Bailleurs")
+    ws5.append(['Code', 'Nom', 'Pays', 'Contact', 'Email'])
+
+    bailleurs = Bailleur.query.all()
+    for b in bailleurs:
+        ws5.append([b.code, b.nom, b.pays or '', b.contact or '', b.email or ''])
+    style_header(ws5)
+
+    # === Feuille 6: Fournisseurs ===
+    ws6 = wb.create_sheet("Fournisseurs")
+    ws6.append(['Code', 'Nom', 'Categorie', 'NINEA', 'Telephone', 'Email', 'Actif'])
+
+    fournisseurs = Fournisseur.query.all()
+    for f in fournisseurs:
+        ws6.append([
+            f.code, f.nom, f.categorie or '', f.ninea or '',
+            f.telephone or '', f.email or '', 'Oui' if f.actif else 'Non'
+        ])
+    style_header(ws6)
+
+    # === Feuille 7: Plan comptable ===
+    ws7 = wb.create_sheet("Plan Comptable")
+    ws7.append(['Numero', 'Intitule', 'Classe', 'Type'])
+
+    comptes = CompteComptable.query.order_by(CompteComptable.numero).all()
+    for c in comptes:
+        ws7.append([c.numero, c.intitule, c.classe, c.type_compte or ''])
+    style_header(ws7)
+
+    # === Feuille 8: Balance ===
+    ws8 = wb.create_sheet("Balance")
+    ws8.append(['Compte', 'Intitule', 'Total Debit', 'Total Credit', 'Solde Debiteur', 'Solde Crediteur'])
+
+    for c in comptes:
+        total_debit = db.session.query(db.func.sum(LigneEcriture.debit)).filter(
+            LigneEcriture.compte_id == c.id).scalar() or 0
+        total_credit = db.session.query(db.func.sum(LigneEcriture.credit)).filter(
+            LigneEcriture.compte_id == c.id).scalar() or 0
+        solde = float(total_debit) - float(total_credit)
+        if total_debit or total_credit:
+            ws8.append([
+                c.numero, c.intitule,
+                float(total_debit), float(total_credit),
+                solde if solde > 0 else 0,
+                -solde if solde < 0 else 0
+            ])
+    style_header(ws8)
+
+    # Sauvegarder dans un buffer
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    log_audit('export', None, 'EXPORT_EXCEL', new_values={'type': 'full_backup'})
+
+    filename = f'CREATES_Export_Complet_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    return send_file(output, as_attachment=True, download_name=filename,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 # =============================================================================
