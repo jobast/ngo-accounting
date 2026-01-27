@@ -9,15 +9,35 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            /* Couleurs adaptées au logo CREATES (vert olive) */
-            --primary-color: #7D8B6A;
-            --secondary-color: #6B7A5A;
-            --accent-color: #A4B494;
-            --dark-color: #5A6A4A;
+            /* CREATES Brand Palette - based on logo sage/olive green */
+            --creates-primary: #7B8B6F;       /* Logo green */
+            --creates-primary-dark: #5F6B53;  /* Darker shade */
+            --creates-primary-light: #9BA78D; /* Lighter shade */
+            --creates-secondary: #6B7A65;     /* Complementary green */
+
+            /* Semantic colors - harmonized with brand */
+            --creates-success: #5D8A66;       /* Green for positive */
+            --creates-warning: #C4A35A;       /* Warm amber */
+            --creates-danger: #B85C5C;        /* Muted red */
+            --creates-info: #5A7A8A;          /* Blue-gray */
+
+            /* Neutrals with green tint */
+            --creates-bg: #F5F6F3;            /* Background */
+            --creates-surface: #FFFFFF;       /* Cards */
+            --creates-text: #2D3A2E;          /* Primary text */
+            --creates-text-muted: #5A6B5C;    /* Secondary text */
+            --creates-border: #D8DDD5;        /* Borders */
+
+            /* Legacy aliases for compatibility */
+            --primary-color: var(--creates-primary);
+            --secondary-color: var(--creates-secondary);
+            --accent-color: var(--creates-primary-light);
+            --dark-color: var(--creates-primary-dark);
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f7f8f5;
+            background-color: var(--creates-bg);
+            color: var(--creates-text);
         }
         .sidebar {
             position: fixed;
@@ -25,7 +45,7 @@
             left: 0;
             height: 100vh;
             width: 250px;
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(180deg, var(--creates-primary), var(--creates-primary-dark));
             color: white;
             padding-top: 10px;
             z-index: 1000;
@@ -72,7 +92,7 @@
         .sidebar .nav-link:hover, .sidebar .nav-link.active {
             color: white;
             background: rgba(255,255,255,0.15);
-            border-left: 4px solid var(--accent-color);
+            border-left: 4px solid var(--creates-primary-light);
         }
         .sidebar .nav-link i {
             margin-right: 10px;
@@ -110,30 +130,63 @@
             font-weight: 600;
         }
         .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: var(--creates-primary);
+            border-color: var(--creates-primary);
         }
-        .btn-primary:hover {
-            background-color: var(--dark-color);
-            border-color: var(--dark-color);
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: var(--creates-primary-dark);
+            border-color: var(--creates-primary-dark);
         }
         .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
+            color: var(--creates-primary);
+            border-color: var(--creates-primary);
         }
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+        .btn-outline-primary:hover, .btn-outline-primary:focus {
+            background-color: var(--creates-primary);
+            border-color: var(--creates-primary);
+            color: white;
+        }
+        .btn-success {
+            background-color: var(--creates-success);
+            border-color: var(--creates-success);
+        }
+        .btn-warning {
+            background-color: var(--creates-warning);
+            border-color: var(--creates-warning);
+            color: var(--creates-text);
+        }
+        .btn-danger {
+            background-color: var(--creates-danger);
+            border-color: var(--creates-danger);
+        }
+        .btn-info {
+            background-color: var(--creates-info);
+            border-color: var(--creates-info);
             color: white;
         }
         .text-primary {
-            color: var(--primary-color) !important;
+            color: var(--creates-primary) !important;
+        }
+        .bg-primary {
+            background-color: var(--creates-primary) !important;
+        }
+        .bg-success {
+            background-color: var(--creates-success) !important;
+        }
+        .bg-warning {
+            background-color: var(--creates-warning) !important;
+        }
+        .bg-danger {
+            background-color: var(--creates-danger) !important;
+        }
+        .bg-info {
+            background-color: var(--creates-info) !important;
         }
         a {
-            color: var(--primary-color);
+            color: var(--creates-primary);
         }
         a:hover {
-            color: var(--dark-color);
+            color: var(--creates-primary-dark);
         }
         .stat-card {
             background: white;
@@ -155,11 +208,45 @@
             font-weight: bold;
         }
         .table th {
-            background-color: #f8f9fa;
+            background-color: var(--creates-bg);
             font-weight: 600;
+            color: var(--creates-text);
         }
-        .badge-actif { background-color: var(--secondary-color); }
-        .badge-cloture { background-color: #6c757d; }
+        .table {
+            color: var(--creates-text);
+        }
+        .badge-actif { background-color: var(--creates-success); }
+        .badge-cloture { background-color: var(--creates-text-muted); }
+
+        /* Progress bars */
+        .progress-bar {
+            background-color: var(--creates-primary);
+        }
+        .progress-bar.bg-success {
+            background-color: var(--creates-success) !important;
+        }
+
+        /* Alerts */
+        .alert-success {
+            background-color: rgba(93, 138, 102, 0.15);
+            border-color: var(--creates-success);
+            color: var(--creates-text);
+        }
+        .alert-warning {
+            background-color: rgba(196, 163, 90, 0.15);
+            border-color: var(--creates-warning);
+            color: var(--creates-text);
+        }
+        .alert-danger {
+            background-color: rgba(184, 92, 92, 0.15);
+            border-color: var(--creates-danger);
+            color: var(--creates-text);
+        }
+        .alert-info {
+            background-color: rgba(90, 122, 138, 0.15);
+            border-color: var(--creates-info);
+            color: var(--creates-text);
+        }
 
         /* Recherche sidebar */
         .sidebar input::placeholder {

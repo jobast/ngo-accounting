@@ -8,11 +8,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2c5530;
-            --secondary-color: #4a7c59;
+            --creates-primary: #7B8B6F;
+            --creates-primary-dark: #5F6B53;
+            --creates-text-muted: #5A6B5C;
         }
         body {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--creates-primary), var(--creates-primary-dark));
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -32,17 +33,24 @@
             margin-bottom: 30px;
         }
         .header h1 {
-            color: var(--primary-color);
+            color: var(--creates-primary-dark);
             font-size: 24px;
             margin-bottom: 10px;
         }
+        .text-primary {
+            color: var(--creates-primary) !important;
+        }
         .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: var(--creates-primary);
+            border-color: var(--creates-primary);
         }
         .btn-primary:hover {
-            background-color: var(--secondary-color);
-            border-color: var(--secondary-color);
+            background-color: var(--creates-primary-dark);
+            border-color: var(--creates-primary-dark);
+        }
+        .form-control:focus {
+            border-color: var(--creates-primary);
+            box-shadow: 0 0 0 0.2rem rgba(123, 139, 111, 0.25);
         }
     </style>
 </head>

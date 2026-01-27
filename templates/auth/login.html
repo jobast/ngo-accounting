@@ -8,11 +8,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2c5530;
-            --secondary-color: #4a7c59;
+            /* CREATES Brand Palette */
+            --creates-primary: #7B8B6F;
+            --creates-primary-dark: #5F6B53;
+            --creates-primary-light: #9BA78D;
+            --creates-text: #2D3A2E;
+            --creates-text-muted: #5A6B5C;
         }
         body {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--creates-primary), var(--creates-primary-dark));
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -32,30 +36,37 @@
             margin-bottom: 30px;
         }
         .login-header h1 {
-            color: var(--primary-color);
+            color: var(--creates-primary-dark);
             font-weight: bold;
             font-size: 28px;
         }
         .login-header p {
-            color: #666;
+            color: var(--creates-text-muted);
             margin: 0;
         }
         .btn-login {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: var(--creates-primary);
+            border-color: var(--creates-primary);
             padding: 12px;
             font-weight: 500;
         }
         .btn-login:hover {
-            background-color: var(--secondary-color);
-            border-color: var(--secondary-color);
+            background-color: var(--creates-primary-dark);
+            border-color: var(--creates-primary-dark);
         }
         .form-control:focus {
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 0.2rem rgba(74, 124, 89, 0.25);
+            border-color: var(--creates-primary);
+            box-shadow: 0 0 0 0.2rem rgba(123, 139, 111, 0.25);
         }
         .input-group-text {
             background-color: #f8f9fa;
+            color: var(--creates-text-muted);
+        }
+        a {
+            color: var(--creates-primary);
+        }
+        a:hover {
+            color: var(--creates-primary-dark);
         }
     </style>
 </head>
