@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Immobilisations - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> Registre des Immobilisations</h2>
+    <a href="{{ url_for('nouvelle_immobilisation') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nouvelle immobilisation
+    </a>
+</div>
+
+<!-- Totaux -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Valeur d'Acquisition</h6>
+                <div class="h4">{{ "{:,.0f}".format(total_acquisition) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Amortissements Cumulés</h6>
+                <div class="h4">{{ "{:,.0f}".format(total_amortissement) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6>Valeur Nette Comptable</h6>
+                <div class="h4">{{ "{:,.0f}".format(total_vnc) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Catégorie</label>
+                <select name="categorie" class="form-select">
+                    <option value="">Toutes</option>
+                    <option value="informatique" {% if request.args.get('categorie') == 'informatique' %}selected{% endif %}>Informatique (3 ans)</option>
+                    <option value="vehicule" {% if request.args.get('categorie') == 'vehicule' %}selected{% endif %}>Véhicules (5 ans)</option>
+                    <option value="mobilier" {% if request.args.get('categorie') == 'mobilier' %}selected{% endif %}>Mobilier (10 ans)</option>
+                    <option value="batiment" {% if request.args.get('categorie') == 'batiment' %}selected{% endif %}>Bâtiments (20 ans)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Statut</label>
+                <select name="statut" class="form-select">
+                    <option value="actif" {% if request.args.get('statut', 'actif') == 'actif' %}selected{% endif %}>Actif</option>
+                    <option value="cede" {% if request.args.get('statut') == 'cede' %}selected{% endif %}>Cédé</option>
+                    <option value="rebut" {% if request.args.get('statut') == 'rebut' %}selected{% endif %}>Mis au rebut</option>
+                    <option value="" {% if request.args.get('statut') == '' %}selected{% endif %}>Tous</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-search"></i> Filtrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if immobilisations %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Désignation</th>
+                        <th>Catégorie</th>
+                        <th>Date Acq.</th>
+                        <th class="text-end">Valeur Acq.</th>
+                        <th class="text-end">Amort. Cum.</th>
+                        <th class="text-end">VNC</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for immo in immobilisations %}
+                    <tr>
+                        <td><strong>{{ immo.code }}</strong></td>
+                        <td>{{ immo.designation[:30] }}{% if immo.designation|length > 30 %}...{% endif %}</td>
+                        <td>
+                            {% if immo.categorie == 'informatique' %}
+                            <span class="badge bg-info">Informatique</span>
+                            {% elif immo.categorie == 'vehicule' %}
+                            <span class="badge bg-warning text-dark">Véhicule</span>
+                            {% elif immo.categorie == 'mobilier' %}
+                            <span class="badge bg-secondary">Mobilier</span>
+                            {% elif immo.categorie == 'batiment' %}
+                            <span class="badge bg-primary">Bâtiment</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ immo.date_acquisition.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(immo.valeur_acquisition) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(immo.cumul_amortissement) }}</td>
+                        <td class="text-end"><strong>{{ "{:,.0f}".format(immo.valeur_nette_comptable) }}</strong></td>
+                        <td>
+                            {% if immo.statut == 'actif' %}
+                            <span class="badge bg-success">Actif</span>
+                            {% elif immo.statut == 'cede' %}
+                            <span class="badge bg-secondary">Cédé</span>
+                            {% else %}
+                            <span class="badge bg-dark">Rebut</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('detail_immobilisation', id=immo.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-building display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucune immobilisation enregistrée.</p>
+            <a href="{{ url_for('nouvelle_immobilisation') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Créer une immobilisation
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header">Durées d'amortissement SYSCOA</div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <i class="bi bi-laptop display-6 text-info"></i>
+                        <h6 class="mt-2">Informatique</h6>
+                        <strong>3 ans (33.33%)</strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <i class="bi bi-truck display-6 text-warning"></i>
+                        <h6 class="mt-2">Véhicules</h6>
+                        <strong>5 ans (20%)</strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <i class="bi bi-lamp display-6 text-secondary"></i>
+                        <h6 class="mt-2">Mobilier</h6>
+                        <strong>10 ans (10%)</strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3">
+                        <i class="bi bi-building display-6 text-primary"></i>
+                        <h6 class="mt-2">Bâtiments</h6>
+                        <strong>20 ans (5%)</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

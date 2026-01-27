@@ -2,196 +2,355 @@
 
 {% block title %}Tableau de bord - CREATES{% endblock %}
 
+{% block extra_css %}
+<style>
+    .welcome-banner {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+    }
+    .welcome-banner h2 {
+        margin: 0;
+        font-weight: 600;
+    }
+    .welcome-banner .date {
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        height: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .kpi-card .icon-box {
+        width: 55px;
+        height: 55px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    .kpi-card .label {
+        font-size: 13px;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+    .kpi-card .value {
+        font-size: 26px;
+        font-weight: 700;
+        color: #212529;
+    }
+    .kpi-card .value small {
+        font-size: 14px;
+        font-weight: 400;
+        color: #6c757d;
+    }
+
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        padding: 15px 20px;
+        border-radius: 10px;
+        background: white;
+        border: 1px solid #e9ecef;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.2s;
+        margin-bottom: 10px;
+    }
+    .quick-action-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        transform: translateX(5px);
+    }
+    .quick-action-btn .action-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        margin-right: 15px;
+    }
+    .quick-action-btn:hover .action-icon {
+        background: rgba(255,255,255,0.2) !important;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .chart-card .card-header {
+        background: transparent;
+        border-bottom: 1px solid #f0f0f0;
+        padding: 15px 20px;
+        font-weight: 600;
+    }
+    .chart-card .card-body {
+        padding: 20px;
+    }
+
+    .treasury-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+    }
+    .treasury-box .label {
+        opacity: 0.85;
+        font-size: 13px;
+    }
+    .treasury-box .amount {
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .project-progress-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    .project-progress-item:last-child {
+        border-bottom: none;
+    }
+    .project-progress-item .progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .alert-item.warning {
+        background: #fff8e1;
+        border-left: 4px solid #ffc107;
+    }
+    .alert-item.danger {
+        background: #ffebee;
+        border-left: 4px solid #dc3545;
+    }
+    .alert-item.info {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+    }
+
+    .gauge-container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .gauge-value {
+        position: absolute;
+        bottom: 20px;
+        font-size: 28px;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Tableau de bord</h2>
-    <span class="text-muted">{{ now().strftime('%d/%m/%Y') if now is defined else '' }}</span>
+<!-- Welcome Banner -->
+<div class="welcome-banner">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2>Bienvenue, {{ current_user.prenom or current_user.email.split('@')[0] }}</h2>
+            <p class="date mb-0">
+                <i class="bi bi-calendar3 me-2"></i>{{ now().strftime('%A %d %B %Y') if now is defined else '' }}
+            </p>
+        </div>
+        <div>
+            <a href="{{ url_for('nouvelle_ecriture') }}" class="btn btn-light btn-lg">
+                <i class="bi bi-plus-lg me-2"></i>Nouvelle opération
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Alertes -->
 {% if alertes %}
 <div class="mb-4">
-    {% for alerte in alertes %}
-    <div class="alert alert-{{ alerte.niveau }} alert-dismissible fade show d-flex align-items-center" role="alert">
-        {% if alerte.niveau == 'danger' %}
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {% elif alerte.niveau == 'warning' %}
-            <i class="bi bi-exclamation-circle-fill me-2"></i>
-        {% else %}
-            <i class="bi bi-info-circle-fill me-2"></i>
-        {% endif %}
-        <div>
-            <strong>{{ alerte.type|replace('_', ' ')|title }}:</strong> {{ alerte.message }}
-            {% if alerte.projet %}
-            <a href="{{ url_for('detail_projet', id=alerte.projet.id) }}" class="alert-link ms-2">Voir le projet</a>
-            {% endif %}
+    {% for alerte in alertes[:3] %}
+    <div class="alert-item {{ alerte.niveau }}">
+        <i class="bi {% if alerte.niveau == 'danger' %}bi-exclamation-triangle-fill{% elif alerte.niveau == 'warning' %}bi-exclamation-circle-fill{% else %}bi-info-circle-fill{% endif %} me-3 fs-5"></i>
+        <div class="flex-grow-1">
+            <strong>{{ alerte.type|replace('_', ' ')|title }}</strong>
+            <p class="mb-0 small">{{ alerte.message }}</p>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        {% if alerte.projet %}
+        <a href="{{ url_for('detail_projet', id=alerte.projet.id) }}" class="btn btn-sm btn-outline-dark">Voir</a>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
 {% endif %}
 
-<!-- Statistiques -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between">
                 <div>
-                    <div class="text-muted mb-1">Projets actifs</div>
-                    <div class="value">{{ stats.nb_projets }}</div>
+                    <div class="label">Budget Total</div>
+                    <div class="value">{{ "{:,.0f}".format(stats.budget_total).replace(",", " ") }}</div>
+                    <small class="text-muted">FCFA</small>
                 </div>
-                <div class="icon" style="background-color: #e3f2fd; color: #1976d2;">
+                <div class="icon-box" style="background: #e3f2fd; color: #1976d2;">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="label">Total Réalisé</div>
+                    <div class="value">{{ "{:,.0f}".format(stats.total_realise).replace(",", " ") }}</div>
+                    <small class="text-muted">FCFA</small>
+                </div>
+                <div class="icon-box" style="background: #e8f5e9; color: #388e3c;">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="label">Projets Actifs</div>
+                    <div class="value">{{ stats.nb_projets }}</div>
+                    <small class="text-muted">en cours</small>
+                </div>
+                <div class="icon-box" style="background: #fff3e0; color: #f57c00;">
                     <i class="bi bi-folder"></i>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
+    <div class="col-lg-3 col-md-6">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between">
                 <div>
-                    <div class="text-muted mb-1">Bailleurs</div>
-                    <div class="value">{{ stats.nb_bailleurs }}</div>
+                    <div class="label">Écritures du mois</div>
+                    <div class="value">{{ stats.ecritures_mois }}</div>
+                    <small class="text-muted">ce mois</small>
                 </div>
-                <div class="icon" style="background-color: #e8f5e9; color: #388e3c;">
-                    <i class="bi bi-people"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted mb-1">Budget total</div>
-                    <div class="value">{{ "{:,.0f}".format(stats.budget_total) }} <small class="text-muted">FCFA</small></div>
-                </div>
-                <div class="icon" style="background-color: #fff3e0; color: #f57c00;">
-                    <i class="bi bi-cash-stack"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted mb-1">Taux d'exécution</div>
-                    <div class="value">{{ "%.0f"|format(stats.taux_execution) }}<small>%</small></div>
-                </div>
-                <div class="icon" style="background-color: #fce4ec; color: #c2185b;">
-                    <i class="bi bi-graph-up"></i>
+                <div class="icon-box" style="background: #fce4ec; color: #c2185b;">
+                    <i class="bi bi-journal-text"></i>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Graphiques -->
-{% if stats.projets_data %}
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-bar-chart me-2"></i>Budget vs Réalisé par projet
+<!-- Main Content Row -->
+<div class="row g-4 mb-4">
+    <!-- Chart - Budget vs Réalisé -->
+    <div class="col-lg-8">
+        <div class="chart-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart me-2"></i>Budget vs Réalisé par Projet</span>
             </div>
             <div class="card-body">
-                {% for projet_stat in stats.projets_data %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>
-                            <strong>{{ projet_stat.code }}</strong>
-                            <small class="text-muted">{{ projet_stat.nom[:30] }}{% if projet_stat.nom|length > 30 %}...{% endif %}</small>
-                        </span>
-                        <span>
-                            {{ "{:,.0f}".format(projet_stat.realise) }} / {{ "{:,.0f}".format(projet_stat.prevu) }}
-                            <strong class="ms-2">{{ "%.0f"|format(projet_stat.taux) }}%</strong>
-                        </span>
-                    </div>
-                    <div class="progress" style="height: 20px;">
-                        <div class="progress-bar {% if projet_stat.taux > 100 %}bg-danger{% elif projet_stat.taux > 80 %}bg-warning{% else %}bg-success{% endif %}"
-                             role="progressbar"
-                             style="width: {{ [projet_stat.taux, 100]|min }}%"
-                             aria-valuenow="{{ projet_stat.taux }}"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
+                {% if stats.projets_data %}
+                <canvas id="budgetChart" height="280"></canvas>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart fs-1"></i>
+                    <p class="mt-2">Aucun projet avec budget</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gauge + Trésorerie -->
+    <div class="col-lg-4">
+        <div class="chart-card mb-4">
+            <div class="card-header">
+                <i class="bi bi-speedometer2 me-2"></i>Taux d'Exécution
+            </div>
+            <div class="card-body">
+                <div class="gauge-container" style="height: 160px;">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="gauge-value">{{ "%.0f"|format(stats.taux_execution) }}%</div>
+                </div>
+                <div class="text-center mt-2">
+                    <small class="text-muted">du budget global consommé</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="treasury-box">
+            <div class="row">
+                <div class="col-6 text-center border-end border-light border-opacity-25">
+                    <div class="label">Solde Banque</div>
+                    <div class="amount">{{ "{:,.0f}".format(stats.solde_banque|default(0)).replace(",", " ") }}</div>
+                </div>
+                <div class="col-6 text-center">
+                    <div class="label">Solde Caisse</div>
+                    <div class="amount">{{ "{:,.0f}".format(stats.solde_caisse|default(0)).replace(",", " ") }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Projects Progress + Quick Actions -->
+<div class="row g-4 mb-4">
+    <!-- Project Progress -->
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check me-2"></i>Exécution par Projet</span>
+                <a href="{{ url_for('liste_projets') }}" class="btn btn-sm btn-outline-primary">Voir tous</a>
+            </div>
+            <div class="card-body">
+                {% if stats.projets_data %}
+                    {% for projet_stat in stats.projets_data[:5] %}
+                    <div class="project-progress-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ projet_stat.code }}</strong>
+                                <span class="text-muted ms-2">{{ projet_stat.nom[:35] }}{% if projet_stat.nom|length > 35 %}...{% endif %}</span>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge {% if projet_stat.taux > 100 %}bg-danger{% elif projet_stat.taux > 80 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ "%.0f"|format(projet_stat.taux) }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar {% if projet_stat.taux > 100 %}bg-danger{% elif projet_stat.taux > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                 style="width: {{ [projet_stat.taux, 100]|min }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">{{ "{:,.0f}".format(projet_stat.realise).replace(",", " ") }} FCFA</small>
+                            <small class="text-muted">sur {{ "{:,.0f}".format(projet_stat.prevu).replace(",", " ") }} FCFA</small>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-activity me-2"></i>Activité du mois
-            </div>
-            <div class="card-body text-center">
-                <div class="h1 text-primary mb-2">{{ stats.ecritures_mois }}</div>
-                <p class="text-muted mb-0">écritures comptables</p>
-                <hr>
-                <div class="row text-center">
-                    <div class="col">
-                        <div class="h4 text-success mb-0">{{ "{:,.0f}".format(stats.total_realise) }}</div>
-                        <small class="text-muted">Total réalisé</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Projets et Bailleurs -->
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-folder me-2"></i>Projets en cours</span>
-                <a href="{{ url_for('nouveau_projet') }}" class="btn btn-sm btn-primary">
-                    <i class="bi bi-plus"></i> Nouveau
-                </a>
-            </div>
-            <div class="card-body">
-                {% if projets %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Code</th>
-                                <th>Projet</th>
-                                <th>Bailleur</th>
-                                <th>Budget</th>
-                                <th>Période</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for projet in projets %}
-                            <tr>
-                                <td><strong>{{ projet.code }}</strong></td>
-                                <td>{{ projet.nom }}</td>
-                                <td>{{ projet.bailleur.nom if projet.bailleur else '-' }}</td>
-                                <td>{{ "{:,.0f}".format(projet.budget_total) if projet.budget_total else '-' }}</td>
-                                <td>
-                                    {% if projet.date_debut %}
-                                        {{ projet.date_debut.strftime('%m/%Y') }} - {{ projet.date_fin.strftime('%m/%Y') if projet.date_fin else '?' }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{{ url_for('detail_projet', id=projet.id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                    {% endfor %}
                 {% else %}
                 <div class="text-center py-4 text-muted">
                     <i class="bi bi-folder fs-1"></i>
@@ -203,8 +362,126 @@
         </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card">
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="chart-card h-100">
+            <div class="card-header">
+                <i class="bi bi-lightning me-2"></i>Actions Rapides
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('nouvelle_ecriture') }}" class="quick-action-btn">
+                    <div class="action-icon" style="background: #e8f5e9; color: #388e3c;">
+                        <i class="bi bi-plus-circle"></i>
+                    </div>
+                    <div>
+                        <strong>Nouvelle opération</strong>
+                        <br><small class="text-muted">Dépense, recette, virement</small>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('liste_ecritures') }}" class="quick-action-btn">
+                    <div class="action-icon" style="background: #e3f2fd; color: #1976d2;">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                    <div>
+                        <strong>Écritures</strong>
+                        <br><small class="text-muted">Voir le journal</small>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('balance_generale') }}" class="quick-action-btn">
+                    <div class="action-icon" style="background: #fff3e0; color: #f57c00;">
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                    <div>
+                        <strong>Balance générale</strong>
+                        <br><small class="text-muted">État des comptes</small>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('rapports') }}" class="quick-action-btn">
+                    <div class="action-icon" style="background: #fce4ec; color: #c2185b;">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                    </div>
+                    <div>
+                        <strong>Rapports</strong>
+                        <br><small class="text-muted">Rapports bailleurs</small>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('liste_reconciliations') }}" class="quick-action-btn">
+                    <div class="action-icon" style="background: #ede7f6; color: #5e35b1;">
+                        <i class="bi bi-bank"></i>
+                    </div>
+                    <div>
+                        <strong>Réconciliation bancaire</strong>
+                        <br><small class="text-muted">Rapprochement</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Projects & Bailleurs -->
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder me-2"></i>Projets Récents</span>
+                <a href="{{ url_for('nouveau_projet') }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus"></i> Nouveau
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if projets %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Code</th>
+                                <th>Projet</th>
+                                <th>Bailleur</th>
+                                <th class="text-end">Budget</th>
+                                <th class="text-center">Statut</th>
+                                <th class="pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for projet in projets[:5] %}
+                            <tr>
+                                <td class="ps-3"><strong>{{ projet.code }}</strong></td>
+                                <td>{{ projet.nom[:30] }}{% if projet.nom|length > 30 %}...{% endif %}</td>
+                                <td>{{ projet.bailleur.code if projet.bailleur else '-' }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(projet.budget_total).replace(",", " ") if projet.budget_total else '-' }}</td>
+                                <td class="text-center">
+                                    <span class="badge {% if projet.statut == 'actif' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ projet.statut }}
+                                    </span>
+                                </td>
+                                <td class="pe-3">
+                                    <a href="{{ url_for('detail_projet', id=projet.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-folder fs-1"></i>
+                    <p class="mt-2">Aucun projet</p>
+                    <a href="{{ url_for('nouveau_projet') }}" class="btn btn-primary">Créer un projet</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="chart-card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-people me-2"></i>Bailleurs</span>
                 <a href="{{ url_for('nouveau_bailleur') }}" class="btn btn-sm btn-primary">
@@ -214,45 +491,130 @@
             <div class="card-body">
                 {% if bailleurs %}
                 <ul class="list-group list-group-flush">
-                    {% for bailleur in bailleurs %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {% for bailleur in bailleurs[:5] %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div>
                             <strong>{{ bailleur.code }}</strong>
-                            <br><small class="text-muted">{{ bailleur.nom }}</small>
+                            <br><small class="text-muted">{{ bailleur.nom[:25] }}{% if bailleur.nom|length > 25 %}...{% endif %}</small>
                         </div>
-                        <span class="badge bg-secondary">{{ bailleur.projets|length }} projet(s)</span>
+                        <span class="badge bg-primary rounded-pill">{{ bailleur.projets|length }}</span>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <div class="text-center py-3 text-muted">
-                    <p>Aucun bailleur</p>
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-people fs-1"></i>
+                    <p class="mt-2">Aucun bailleur</p>
                 </div>
                 {% endif %}
             </div>
         </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <i class="bi bi-lightning me-2"></i>Actions rapides
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('nouvelle_ecriture') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-plus-circle me-2"></i>Nouvelle écriture
-                    </a>
-                    <a href="{{ url_for('balance_generale') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-calculator me-2"></i>Balance générale
-                    </a>
-                    <a href="{{ url_for('reconciliation_analytique') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left-right me-2"></i>Réconciliation
-                    </a>
-                    <a href="{{ url_for('etats_financiers') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-file-spreadsheet me-2"></i>États financiers
-                    </a>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// Budget vs Réalisé Chart
+const budgetCtx = document.getElementById('budgetChart');
+if (budgetCtx) {
+    const projetsData = {{ stats.projets_data | tojson | safe }};
+    if (projetsData && projetsData.length > 0) {
+        new Chart(budgetCtx, {
+            type: 'bar',
+            data: {
+                labels: projetsData.map(p => p.code),
+                datasets: [
+                    {
+                        label: 'Budget',
+                        data: projetsData.map(p => p.prevu),
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Réalisé',
+                        data: projetsData.map(p => p.realise),
+                        backgroundColor: 'rgba(72, 187, 120, 0.8)',
+                        borderColor: 'rgba(72, 187, 120, 1)',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toLocaleString('fr-FR') + ' FCFA';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+                                return value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Gauge Chart
+const gaugeCtx = document.getElementById('gaugeChart');
+if (gaugeCtx) {
+    const tauxExecution = {{ stats.taux_execution|default(0) }};
+    const remaining = Math.max(0, 100 - tauxExecution);
+
+    let color = '#48bb78'; // green
+    if (tauxExecution > 100) color = '#fc8181'; // red
+    else if (tauxExecution > 80) color = '#f6ad55'; // orange
+
+    new Chart(gaugeCtx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [Math.min(tauxExecution, 100), remaining],
+                backgroundColor: [color, '#e2e8f0'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            rotation: -90,
+            circumference: 180,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        }
+    });
+}
+</script>
 {% endblock %}

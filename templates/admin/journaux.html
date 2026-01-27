@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Journaux Comptables - CREATES{% endblock %}
+
+{% block extra_css %}
+<style>
+    .journal-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 15px;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+    .journal-card:hover {
+        transform: translateY(-2px);
+    }
+    .journal-header {
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .journal-code {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+    .journal-body {
+        padding: 0 20px 15px;
+    }
+    .badge-type {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .badge-achat { background: #ffebee; color: #c62828; }
+    .badge-vente { background: #e8f5e9; color: #2e7d32; }
+    .badge-banque { background: #e3f2fd; color: #1565c0; }
+    .badge-caisse { background: #fff3e0; color: #ef6c00; }
+    .badge-od { background: #f3e5f5; color: #7b1fa2; }
+    .badge-salaire { background: #e0f2f1; color: #00695c; }
+    .badge-mobile_money { background: #e8f5e9; color: #388e3c; }
+
+    .compte-link {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        background: #f5f5f5;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+    .compte-link i {
+        margin-right: 6px;
+    }
+
+    .warning-badge {
+        background: #fff3cd;
+        color: #856404;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-journal-bookmark me-2"></i>Journaux Comptables</h2>
+        <p class="text-muted mb-0">Configuration des journaux et liaison aux comptes de trésorerie</p>
+    </div>
+    <a href="{{ url_for('nouveau_journal') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Nouveau journal
+    </a>
+</div>
+
+<!-- Info box -->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-lightbulb me-2"></i>
+    <strong>Conseil :</strong> Liez chaque journal de trésorerie (banque, caisse, mobile money) à son compte comptable correspondant.
+    Cela permet de pré-sélectionner automatiquement le compte lors de la saisie des écritures.
+</div>
+
+<!-- Liste des journaux -->
+<div class="row">
+    {% for journal in journaux %}
+    <div class="col-md-6 col-lg-4">
+        <div class="journal-card">
+            <div class="journal-header">
+                <div>
+                    <span class="journal-code">{{ journal.code }}</span>
+                    <span class="badge-type badge-{{ journal.type_journal or 'od' }} ms-2">
+                        {% if journal.type_journal == 'achat' %}Achats
+                        {% elif journal.type_journal == 'vente' %}Ventes
+                        {% elif journal.type_journal == 'banque' %}Banque
+                        {% elif journal.type_journal == 'caisse' %}Caisse
+                        {% elif journal.type_journal == 'mobile_money' %}Mobile Money
+                        {% elif journal.type_journal == 'salaire' %}Salaires
+                        {% else %}OD{% endif %}
+                    </span>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('modifier_journal', id=journal.id) }}">
+                            <i class="bi bi-pencil me-2"></i>Modifier
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ url_for('supprimer_journal', id=journal.id) }}"
+                                  onsubmit="return confirm('Supprimer ce journal ?')">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-trash me-2"></i>Supprimer
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="journal-body">
+                <p class="mb-2">{{ journal.nom }}</p>
+
+                {% if journal.compte_tresorerie %}
+                <div class="compte-link">
+                    <i class="bi bi-link-45deg"></i>
+                    <strong>{{ journal.compte_tresorerie.numero }}</strong>
+                    <span class="text-muted ms-1">{{ journal.compte_tresorerie.intitule[:20] }}{% if journal.compte_tresorerie.intitule|length > 20 %}...{% endif %}</span>
+                </div>
+                {% elif journal.type_journal in ['banque', 'caisse', 'mobile_money'] %}
+                <div class="warning-badge">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Aucun compte lié
+                </div>
+                {% else %}
+                <span class="text-muted small">Pas de compte lié (normal pour ce type)</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-journal-bookmark fs-1"></i>
+            <p class="mt-3">Aucun journal configuré</p>
+            <a href="{{ url_for('nouveau_journal') }}" class="btn btn-primary">
+                <i class="bi bi-plus me-2"></i>Créer un journal
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Explication des types -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>Types de journaux
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td><span class="badge-type badge-achat">Achats</span></td>
+                        <td>Factures fournisseurs, achats</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-type badge-vente">Ventes</span></td>
+                        <td>Factures clients (rare pour ONG)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-type badge-banque">Banque</span></td>
+                        <td>Opérations bancaires - <strong>lier au compte 52x</strong></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td><span class="badge-type badge-caisse">Caisse</span></td>
+                        <td>Espèces - <strong>lier au compte 57x</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-type badge-mobile_money">Mobile Money</span></td>
+                        <td>Wave, Orange Money - <strong>lier au compte 58x</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-type badge-od">OD</span></td>
+                        <td>Opérations diverses, régularisations</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

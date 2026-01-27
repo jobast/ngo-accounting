@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Avances - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-cash-stack"></i> Gestion des Avances</h2>
+    <a href="{{ url_for('nouvelle_avance') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nouvelle avance
+    </a>
+</div>
+
+{% if nb_retard > 0 %}
+<div class="alert alert-danger mb-4">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Attention!</strong> {{ nb_retard }} avance(s) non justifiée(s) depuis plus de 7 jours.
+    <small>(Manuel Section 3.11.1: déduction salaire applicable)</small>
+</div>
+{% endif %}
+
+<!-- Filtres -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Statut</label>
+                <select name="statut" class="form-select">
+                    <option value="">Tous</option>
+                    <option value="en_attente" {% if request.args.get('statut') == 'en_attente' %}selected{% endif %}>En attente</option>
+                    <option value="justifiee" {% if request.args.get('statut') == 'justifiee' %}selected{% endif %}>Justifiée</option>
+                    <option value="soldee" {% if request.args.get('statut') == 'soldee' %}selected{% endif %}>Soldée</option>
+                    <option value="deduite" {% if request.args.get('statut') == 'deduite' %}selected{% endif %}>Déduite</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Bénéficiaire</label>
+                <input type="text" name="beneficiaire" class="form-control" value="{{ request.args.get('beneficiaire', '') }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-search"></i> Filtrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if avances %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Date</th>
+                        <th>Bénéficiaire</th>
+                        <th>Objet</th>
+                        <th class="text-end">Montant</th>
+                        <th class="text-end">Justifié</th>
+                        <th>Date limite</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for avance in avances %}
+                    <tr class="{% if avance.est_en_retard %}table-danger{% endif %}">
+                        <td><strong>{{ avance.numero }}</strong></td>
+                        <td>{{ avance.date_avance.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ avance.beneficiaire }}</td>
+                        <td>{{ avance.objet[:40] }}{% if avance.objet|length > 40 %}...{% endif %}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(avance.montant) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(avance.montant_justifie) }}</td>
+                        <td>
+                            {{ avance.date_limite.strftime('%d/%m/%Y') if avance.date_limite else '-' }}
+                            {% if avance.est_en_retard %}
+                            <br><span class="badge bg-danger">{{ avance.jours_retard }} jours de retard</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if avance.statut == 'en_attente' %}
+                            <span class="badge bg-warning text-dark">En attente</span>
+                            {% elif avance.statut == 'justifiee' %}
+                            <span class="badge bg-info">Justifiée</span>
+                            {% elif avance.statut == 'soldee' %}
+                            <span class="badge bg-success">Soldée</span>
+                            {% elif avance.statut == 'deduite' %}
+                            <span class="badge bg-secondary">Déduite</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('detail_avance', id=avance.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if avance.statut in ['en_attente', 'justifiee'] %}
+                            <a href="{{ url_for('justifier_avance', id=avance.id) }}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-receipt"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-cash-stack display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucune avance enregistrée.</p>
+            <a href="{{ url_for('nouvelle_avance') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Créer une avance
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

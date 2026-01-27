@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Immobilisation {{ immobilisation.code }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> {{ immobilisation.code }} - {{ immobilisation.designation }}</h2>
+    <div>
+        {% if immobilisation.statut == 'actif' %}
+        <form method="POST" action="{{ url_for('calculer_amortissement', id=immobilisation.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-calculator"></i> Calculer amortissement
+            </button>
+        </form>
+        {% if current_user.role == 'directeur' %}
+        <a href="{{ url_for('sortie_immobilisation', id=immobilisation.id) }}" class="btn btn-warning">
+            <i class="bi bi-box-arrow-right"></i> Sortie
+        </a>
+        {% endif %}
+        {% endif %}
+        <a href="{{ url_for('liste_immobilisations') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Retour
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Informations</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Code:</strong> {{ immobilisation.code }}</p>
+                        <p><strong>Désignation:</strong> {{ immobilisation.designation }}</p>
+                        <p><strong>Catégorie:</strong>
+                            {% if immobilisation.categorie == 'informatique' %}
+                            <span class="badge bg-info">Informatique</span>
+                            {% elif immobilisation.categorie == 'vehicule' %}
+                            <span class="badge bg-warning text-dark">Véhicule</span>
+                            {% elif immobilisation.categorie == 'mobilier' %}
+                            <span class="badge bg-secondary">Mobilier</span>
+                            {% elif immobilisation.categorie == 'batiment' %}
+                            <span class="badge bg-primary">Bâtiment</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Date d'acquisition:</strong> {{ immobilisation.date_acquisition.strftime('%d/%m/%Y') }}</p>
+                        <p><strong>Localisation:</strong> {{ immobilisation.localisation or '-' }}</p>
+                        <p><strong>N° série:</strong> {{ immobilisation.numero_serie or '-' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Fournisseur:</strong> {{ immobilisation.fournisseur or '-' }}</p>
+                        <p><strong>N° facture:</strong> {{ immobilisation.numero_facture or '-' }}</p>
+                        {% if immobilisation.projet %}
+                        <p><strong>Projet:</strong> {{ immobilisation.projet.code }} - {{ immobilisation.projet.nom }}</p>
+                        {% endif %}
+                        <p><strong>Statut:</strong>
+                            {% if immobilisation.statut == 'actif' %}
+                            <span class="badge bg-success">Actif</span>
+                            {% elif immobilisation.statut == 'cede' %}
+                            <span class="badge bg-secondary">Cédé</span>
+                            {% else %}
+                            <span class="badge bg-dark">Mis au rebut</span>
+                            {% endif %}
+                        </p>
+                        {% if immobilisation.date_sortie %}
+                        <p><strong>Date de sortie:</strong> {{ immobilisation.date_sortie.strftime('%d/%m/%Y') }}</p>
+                        {% if immobilisation.valeur_cession %}
+                        <p><strong>Valeur de cession:</strong> {{ "{:,.0f}".format(immobilisation.valeur_cession) }} FCFA</p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableau d'amortissement -->
+        <div class="card">
+            <div class="card-header">Tableau d'Amortissement</div>
+            <div class="card-body">
+                {% if immobilisation.lignes_amortissement %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Exercice</th>
+                                <th class="text-end">Dotation</th>
+                                <th class="text-end">Amort. Cumulé</th>
+                                <th class="text-end">Valeur Nette</th>
+                                <th>Pièce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ligne in immobilisation.lignes_amortissement|sort(attribute='annee') %}
+                            <tr>
+                                <td>{{ ligne.annee }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(ligne.dotation) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(ligne.cumul) }}</td>
+                                <td class="text-end"><strong>{{ "{:,.0f}".format(ligne.valeur_nette) }}</strong></td>
+                                <td>
+                                    {% if ligne.piece_comptable %}
+                                    <a href="{{ url_for('detail_ecriture', id=ligne.piece_comptable.id) }}">
+                                        {{ ligne.piece_comptable.numero }}
+                                    </a>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    <i class="bi bi-calculator"></i> Aucun amortissement calculé
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Valeurs</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Valeur d'acquisition:</span>
+                    <strong>{{ "{:,.0f}".format(immobilisation.valeur_acquisition) }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Amort. cumulé:</span>
+                    <span class="text-danger">- {{ "{:,.0f}".format(immobilisation.cumul_amortissement) }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Valeur Nette Comptable:</strong>
+                    <strong class="text-primary">{{ "{:,.0f}".format(immobilisation.valeur_nette_comptable) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Amortissement</div>
+            <div class="card-body">
+                <p><strong>Durée:</strong> {{ immobilisation.duree_amortissement }} ans</p>
+                <p><strong>Taux:</strong> {{ "{:.2f}".format(immobilisation.taux_amortissement) }}%</p>
+                <p><strong>Dotation annuelle:</strong> {{ "{:,.0f}".format(immobilisation.amortissement_annuel) }} FCFA</p>
+            </div>
+        </div>
+
+        {% if immobilisation.compte_immobilisation or immobilisation.compte_amortissement %}
+        <div class="card">
+            <div class="card-header">Comptes</div>
+            <div class="card-body">
+                {% if immobilisation.compte_immobilisation %}
+                <p><strong>Immobilisation:</strong><br>
+                    <small>{{ immobilisation.compte_immobilisation.numero }} - {{ immobilisation.compte_immobilisation.intitule }}</small>
+                </p>
+                {% endif %}
+                {% if immobilisation.compte_amortissement %}
+                <p><strong>Amortissement:</strong><br>
+                    <small>{{ immobilisation.compte_amortissement.numero }} - {{ immobilisation.compte_amortissement.intitule }}</small>
+                </p>
+                {% endif %}
+                {% if immobilisation.compte_dotation %}
+                <p><strong>Dotation:</strong><br>
+                    <small>{{ immobilisation.compte_dotation.numero }} - {{ immobilisation.compte_dotation.intitule }}</small>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

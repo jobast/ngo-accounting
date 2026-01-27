@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Taux de Change - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-currency-exchange"></i> Taux de Change BCEAO</h2>
+</div>
+
+<!-- Sélection année -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Année</label>
+                <select name="annee" class="form-select" onchange="this.form.submit()">
+                    {% for a in annees %}
+                    <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Taux {{ annee }}</div>
+            <div class="card-body">
+                {% if taux %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Devise</th>
+                                <th>Mois</th>
+                                <th class="text-end">Taux (vs XOF)</th>
+                                <th>Source</th>
+                                <th>Date saisie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in taux %}
+                            <tr>
+                                <td><strong>{{ t.devise.code }}</strong></td>
+                                <td>
+                                    {% set mois_noms = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                                                       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'] %}
+                                    {{ mois_noms[t.mois] }}
+                                </td>
+                                <td class="text-end">{{ "{:,.2f}".format(t.taux) }}</td>
+                                <td>{{ t.source }}</td>
+                                <td>{{ t.date_saisie.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-currency-exchange display-4"></i>
+                    <p class="mt-3">Aucun taux de change pour {{ annee }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Ajouter un taux</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('nouveau_taux_change') }}">
+                    <div class="mb-3">
+                        <label class="form-label">Devise</label>
+                        <select name="devise_id" class="form-select" required>
+                            {% for devise in devises %}
+                            <option value="{{ devise.id }}">{{ devise.code }} - {{ devise.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Mois</label>
+                                <select name="mois" class="form-select" required>
+                                    {% for i in range(1, 13) %}
+                                    {% set mois_noms = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                                                       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'] %}
+                                    <option value="{{ i }}">{{ mois_noms[i-1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Année</label>
+                                <input type="number" name="annee" class="form-control" value="{{ annee }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Taux (1 devise = X FCFA)</label>
+                        <input type="number" step="0.01" name="taux" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg"></i> Ajouter
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Taux de référence BCEAO</div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle"></i>
+                    Manuel Section 3.4: Utiliser le taux de change moyen mensuel BCEAO
+                    pour la conversion des devises étrangères.
+                </p>
+                <p><strong>Taux indicatifs:</strong></p>
+                <ul class="list-unstyled">
+                    <li>1 USD ≈ 600 XOF</li>
+                    <li>1 EUR ≈ 655 XOF</li>
+                    <li>1 CHF ≈ 700 XOF</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

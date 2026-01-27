@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Justifier Avance {{ avance.numero }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-receipt"></i> Justifier Avance {{ avance.numero }}</h2>
+    <a href="{{ url_for('detail_avance', id=avance.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Retour
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Bénéficiaire</label>
+                        <input type="text" class="form-control" value="{{ avance.beneficiaire }}" disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Montant de l'avance</label>
+                        <input type="text" class="form-control" value="{{ "{:,.0f}".format(avance.montant) }} FCFA" disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Déjà justifié</label>
+                        <input type="text" class="form-control" value="{{ "{:,.0f}".format(avance.montant_justifie) }} FCFA" disabled>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="montant_justifie" class="form-label">Montant justifié (total) *</label>
+                                <div class="input-group">
+                                    <input type="number" step="1" class="form-control" id="montant_justifie"
+                                           name="montant_justifie" value="{{ avance.montant_justifie }}" required>
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">Montant total des pièces justificatives fournies</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="montant_rembourse" class="form-label">Montant remboursé</label>
+                                <div class="input-group">
+                                    <input type="number" step="1" class="form-control" id="montant_rembourse"
+                                           name="montant_rembourse" value="{{ avance.montant_rembourse }}">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">Montant en espèces restitué</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes / Observations</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3">{{ avance.justification_notes or '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('detail_avance', id=avance.id) }}" class="btn btn-outline-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg"></i> Enregistrer la justification
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">Récapitulatif</div>
+            <div class="card-body">
+                <p><strong>Objet:</strong> {{ avance.objet }}</p>
+                <p><strong>Date:</strong> {{ avance.date_avance.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Date limite:</strong> {{ avance.date_limite.strftime('%d/%m/%Y') if avance.date_limite else '-' }}</p>
+                {% if avance.est_en_retard %}
+                <div class="alert alert-danger py-2">
+                    <i class="bi bi-exclamation-triangle"></i> En retard de {{ avance.jours_retard }} jours
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

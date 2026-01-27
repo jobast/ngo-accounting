@@ -4,54 +4,136 @@
 
 {% block extra_css %}
 <style>
-    .assistant-card {
+    .operation-card {
         cursor: pointer;
         transition: all 0.2s;
-        border: 2px solid transparent;
+        border: 2px solid #dee2e6;
+        height: 100%;
     }
-    .assistant-card:hover {
+    .operation-card:hover {
         border-color: var(--primary-color);
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .assistant-card.selected {
+    .operation-card.selected {
         border-color: var(--primary-color);
         background-color: #f0fff4;
     }
-    .assistant-card .icon {
-        font-size: 24px;
-        width: 50px;
-        height: 50px;
+    .operation-card .icon {
+        font-size: 32px;
+        width: 60px;
+        height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
+        border-radius: 12px;
+        margin-bottom: 10px;
+    }
+    .operation-form {
+        display: none;
+    }
+    .operation-form.active {
+        display: block;
+    }
+    .form-section {
+        background: #f8f9fa;
         border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .form-section-title {
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: var(--primary-color);
+    }
+    .amount-input {
+        font-size: 24px;
+        font-weight: 600;
+        text-align: right;
+    }
+    .currency-addon {
+        background: var(--primary-color);
+        color: white;
+        font-weight: 600;
+    }
+    .project-allocation {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    .allocation-item {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .allocation-item:last-child {
+        margin-bottom: 0;
+    }
+    .allocation-progress {
+        height: 6px;
+        border-radius: 3px;
+        margin-top: 10px;
+    }
+    .btn-add-allocation {
+        border-style: dashed;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .mode-toggle-container {
+        text-align: right;
+        margin-bottom: 10px;
+    }
+    .mode-toggle-container a {
+        font-size: 12px;
+        color: #6c757d;
+    }
+
+    /* Ventilation améliorée */
+    .ventilation-section {
+        background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+        border: 1px solid #c8e6c9;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    .ventilation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .ventilation-title {
+        font-weight: 600;
+        color: #2e7d32;
     }
     .ventilation-row {
-        background-color: #f8f9fa;
-        border-left: 3px solid #4a7c59;
-    }
-    .ventilation-container {
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 5px;
-        margin-top: 5px;
-    }
-    .btn-ventiler {
-        font-size: 11px;
-        padding: 2px 6px;
-    }
-    .ventilation-item {
-        display: flex;
-        gap: 5px;
-        margin-bottom: 5px;
+        display: grid;
+        grid-template-columns: 1fr 100px 40px;
+        gap: 10px;
         align-items: center;
+        background: white;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
     }
-    .ventilation-item select {
-        flex: 2;
+    .ventilation-pct {
+        text-align: center;
+        font-weight: 600;
     }
-    .ventilation-item input {
-        flex: 1;
-        max-width: 80px;
+    .ventilation-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 10px;
+        border-top: 1px dashed #a5d6a7;
+        margin-top: 10px;
+    }
+    .total-badge {
+        font-size: 14px;
+        padding: 5px 15px;
     }
 </style>
 {% endblock %}
@@ -60,102 +142,720 @@
 <div class="mb-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('liste_ecritures') }}">Ecritures</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_ecritures') }}">Écritures</a></li>
             <li class="breadcrumb-item active">Nouvelle</li>
         </ol>
     </nav>
-    <h2><i class="bi bi-journal-plus me-2"></i>Nouvelle écriture comptable</h2>
+    <h2><i class="bi bi-plus-circle me-2"></i>Nouvelle opération</h2>
 </div>
 
-<!-- Assistants de saisie -->
-<div class="card mb-4">
+<!-- Choix du type d'opération -->
+<div class="card mb-4" id="operationChoice">
     <div class="card-header">
-        <i class="bi bi-magic me-2"></i>Choisir le type d'opération <small class="text-muted">(optionnel)</small>
+        <i class="bi bi-grid me-2"></i>Quel type d'opération souhaitez-vous enregistrer ?
     </div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-3">
-                <div class="assistant-card card h-100" onclick="selectAssistant('fournisseur')">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="icon me-3" style="background-color: #ffebee; color: #c62828;">
-                            <i class="bi bi-shop"></i>
-                        </div>
-                        <div>
-                            <strong>Paiement fournisseur</strong>
-                            <br><small class="text-muted">Facture, achat</small>
-                        </div>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="selectOperation('depense')">
+                    <div class="icon mx-auto" style="background-color: #ffebee; color: #c62828;">
+                        <i class="bi bi-cart-dash"></i>
                     </div>
+                    <strong>Dépense</strong>
+                    <small class="text-muted d-block">Achat, facture, frais</small>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="assistant-card card h-100" onclick="selectAssistant('bailleur')">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="icon me-3" style="background-color: #e8f5e9; color: #2e7d32;">
-                            <i class="bi bi-bank"></i>
-                        </div>
-                        <div>
-                            <strong>Encaissement bailleur</strong>
-                            <br><small class="text-muted">Subvention, tranche</small>
-                        </div>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="selectOperation('recette')">
+                    <div class="icon mx-auto" style="background-color: #e8f5e9; color: #2e7d32;">
+                        <i class="bi bi-cash-coin"></i>
                     </div>
+                    <strong>Recette</strong>
+                    <small class="text-muted d-block">Subvention, paiement reçu</small>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="assistant-card card h-100" onclick="selectAssistant('salaires')">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="icon me-3" style="background-color: #e3f2fd; color: #1565c0;">
-                            <i class="bi bi-people"></i>
-                        </div>
-                        <div>
-                            <strong>Salaires du mois</strong>
-                            <br><small class="text-muted">Paie, charges</small>
-                        </div>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="selectOperation('salaires')">
+                    <div class="icon mx-auto" style="background-color: #e3f2fd; color: #1565c0;">
+                        <i class="bi bi-people-fill"></i>
                     </div>
+                    <strong>Salaires</strong>
+                    <small class="text-muted d-block">Paie du mois</small>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="assistant-card card h-100" onclick="selectAssistant('mission')">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="icon me-3" style="background-color: #fff3e0; color: #ef6c00;">
-                            <i class="bi bi-airplane"></i>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="selectOperation('virement')">
+                    <div class="icon mx-auto" style="background-color: #f3e5f5; color: #7b1fa2;">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </div>
+                    <strong>Virement interne</strong>
+                    <small class="text-muted d-block">Banque ↔ Caisse</small>
+                </div>
+            </div>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="selectOperation('avance')">
+                    <div class="icon mx-auto" style="background-color: #fff3e0; color: #ef6c00;">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <strong>Avance</strong>
+                    <small class="text-muted d-block">Mission, achat employé</small>
+                </div>
+            </div>
+            <div class="col-md-4 col-6">
+                <div class="operation-card card text-center p-3" onclick="showAdvancedMode()">
+                    <div class="icon mx-auto" style="background-color: #eceff1; color: #546e7a;">
+                        <i class="bi bi-sliders"></i>
+                    </div>
+                    <strong>Autre / Expert</strong>
+                    <small class="text-muted d-block">Écriture manuelle</small>
+                </div>
+            </div>
+        </div>
+        <div class="mode-toggle-container mt-3 d-none">
+            <a href="#" onclick="showAdvancedMode(); return false;">
+                <i class="bi bi-sliders me-1"></i>Mode expert (écriture manuelle)
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Formulaire DÉPENSE -->
+<form method="POST" id="formDepense" class="operation-form">
+    <input type="hidden" name="operation_type" value="depense">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-cart-dash me-2 text-danger"></i>Enregistrer une dépense</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Montant -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-cash me-2"></i>Montant</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control amount-input" name="montant"
+                                           placeholder="0" required step="1" min="1">
+                                    <span class="input-group-text currency-addon">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
+                            </div>
                         </div>
-                        <div>
-                            <strong>Frais de mission</strong>
-                            <br><small class="text-muted">Deplacement, per diem</small>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-card-text me-2"></i>Description</div>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" name="libelle"
+                                   placeholder="Ex: Achat fournitures de bureau" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Catégorie de dépense</label>
+                                <select class="form-select" name="compte_charge" required>
+                                    <option value="">-- Sélectionner --</option>
+                                    {% for compte in comptes if compte.classe == 6 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Référence (optionnel)</label>
+                                <input type="text" class="form-control" name="reference"
+                                       placeholder="N° facture, reçu...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paiement -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-wallet2 me-2"></i>Mode de paiement</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select class="form-select" name="compte_tresorerie" required>
+                                    <option value="">-- Payé depuis --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Projet -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-folder me-2"></i>Imputation projet</div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="multiProjetDepense" onchange="toggleMultiProjet('depense')">
+                            <label class="form-check-label" for="multiProjetDepense">Répartir sur plusieurs projets</label>
+                        </div>
+
+                        <div id="singleProjetDepense">
+                            <select class="form-select" name="projet_id">
+                                <option value="">-- Aucun projet (frais généraux) --</option>
+                                {% for projet in projets %}
+                                <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div id="multiProjetDepenseSection" class="ventilation-section d-none">
+                            <div class="ventilation-header">
+                                <span class="ventilation-title"><i class="bi bi-pie-chart me-2"></i>Répartition</span>
+                            </div>
+                            <div id="ventilationItemsDepense">
+                                <div class="ventilation-row">
+                                    <select class="form-select form-select-sm ventilation-projet" onchange="updateVentilation('depense')">
+                                        <option value="">-- Projet --</option>
+                                        {% for projet in projets %}
+                                        <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom[:25] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="number" class="form-control form-control-sm ventilation-pct"
+                                           placeholder="%" min="0" max="100" step="1" oninput="updateVentilation('depense')">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVentilationRow(this, 'depense')">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success btn-add-allocation" onclick="addVentilationRow('depense')">
+                                <i class="bi bi-plus me-1"></i>Ajouter un projet
+                            </button>
+                            <div class="ventilation-total">
+                                <span>Total répartition</span>
+                                <span id="totalVentilationDepense" class="total-badge badge bg-warning">0%</span>
+                            </div>
+                            <input type="hidden" name="ventilation" id="ventilationDataDepense" value="">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<form method="POST" id="ecritureForm">
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer la dépense
+                        </button>
+                        <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Formulaire RECETTE -->
+<form method="POST" id="formRecette" class="operation-form">
+    <input type="hidden" name="operation_type" value="recette">
     <div class="row">
         <div class="col-md-8">
-            <!-- En-tête de la pièce -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-cash-coin me-2 text-success"></i>Enregistrer une recette</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Montant -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-cash me-2"></i>Montant reçu</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control amount-input" name="montant"
+                                           placeholder="0" required step="1" min="1">
+                                    <span class="input-group-text currency-addon">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date de réception</label>
+                                <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-card-text me-2"></i>Description</div>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" name="libelle"
+                                   placeholder="Ex: Tranche 1 subvention Nitidae" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Type de recette</label>
+                                <select class="form-select" name="compte_produit" required>
+                                    <option value="">-- Sélectionner --</option>
+                                    {% for compte in comptes if compte.classe == 7 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Référence (optionnel)</label>
+                                <input type="text" class="form-control" name="reference"
+                                       placeholder="N° virement, contrat...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Encaissement -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-bank me-2"></i>Encaissé sur</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select class="form-select" name="compte_tresorerie" required>
+                                    <option value="">-- Compte de réception --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Projet -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-folder me-2"></i>Projet concerné</div>
+                        <select class="form-select" name="projet_id">
+                            <option value="">-- Aucun projet --</option>
+                            {% for projet in projets %}
+                            <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer la recette
+                        </button>
+                        <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Formulaire VIREMENT INTERNE -->
+<form method="POST" id="formVirement" class="operation-form">
+    <input type="hidden" name="operation_type" value="virement">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-arrow-left-right me-2 text-primary"></i>Virement interne</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Montant -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-cash me-2"></i>Montant transféré</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control amount-input" name="montant"
+                                           placeholder="0" required step="1" min="1">
+                                    <span class="input-group-text currency-addon">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comptes -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-arrow-down-up me-2"></i>Comptes</div>
+                        <div class="row align-items-center">
+                            <div class="col-md-5">
+                                <label class="form-label">De (source)</label>
+                                <select class="form-select" name="compte_source" required>
+                                    <option value="">-- Compte source --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <i class="bi bi-arrow-right fs-3 text-primary"></i>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Vers (destination)</label>
+                                <select class="form-select" name="compte_destination" required>
+                                    <option value="">-- Compte destination --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-card-text me-2"></i>Description</div>
+                        <input type="text" class="form-control" name="libelle"
+                               placeholder="Ex: Approvisionnement caisse" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer le virement
+                        </button>
+                        <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Formulaire AVANCE -->
+<form method="POST" id="formAvance" class="operation-form">
+    <input type="hidden" name="operation_type" value="avance">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-badge me-2 text-warning"></i>Avance à un employé</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Montant -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-cash me-2"></i>Montant de l'avance</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control amount-input" name="montant"
+                                           placeholder="0" required step="1" min="1">
+                                    <span class="input-group-text currency-addon">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bénéficiaire -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-person me-2"></i>Bénéficiaire</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" name="beneficiaire"
+                                       placeholder="Nom de l'employé" required>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" name="libelle"
+                                       placeholder="Objet de l'avance (mission, achat...)" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paiement -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-wallet2 me-2"></i>Payé depuis</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select class="form-select" name="compte_tresorerie" required>
+                                    <option value="">-- Compte --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Projet -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-folder me-2"></i>Projet concerné</div>
+                        <select class="form-select" name="projet_id">
+                            <option value="">-- Aucun projet --</option>
+                            {% for projet in projets %}
+                            <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer l'avance
+                        </button>
+                        <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    L'avance devra être justifiée sous 7 jours (Manuel de gestion).
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Formulaire SALAIRES -->
+<form method="POST" id="formSalaires" class="operation-form">
+    <input type="hidden" name="operation_type" value="salaires">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-people-fill me-2 text-primary"></i>Enregistrer les salaires</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Période -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-calendar me-2"></i>Période</div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Mois</label>
+                                <select class="form-select" name="mois_salaire" required>
+                                    <option value="01">Janvier</option>
+                                    <option value="02">Février</option>
+                                    <option value="03">Mars</option>
+                                    <option value="04">Avril</option>
+                                    <option value="05">Mai</option>
+                                    <option value="06">Juin</option>
+                                    <option value="07">Juillet</option>
+                                    <option value="08">Août</option>
+                                    <option value="09">Septembre</option>
+                                    <option value="10">Octobre</option>
+                                    <option value="11">Novembre</option>
+                                    <option value="12">Décembre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Année</label>
+                                <input type="number" class="form-control" name="annee_salaire" value="{{ today[:4] }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date de paiement</label>
+                                <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Montants -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-cash me-2"></i>Montants</div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Salaires bruts</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="salaires_bruts"
+                                           placeholder="0" required step="1" min="0" onchange="calculerNetSalaire()">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">Total des salaires bruts du mois</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Charges sociales patronales</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="charges_patronales"
+                                           placeholder="0" step="1" min="0" value="0">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">CSS, IPM, etc.</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Retenues salariales</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="retenues_salariales"
+                                           placeholder="0" step="1" min="0" value="0" onchange="calculerNetSalaire()">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">IPRES, IR, etc. (déduites du brut)</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Net à payer</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-light" name="net_a_payer" id="netAPayer"
+                                           placeholder="0" step="1" readonly>
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                                <small class="text-muted">Calculé automatiquement</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paiement -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-wallet2 me-2"></i>Mode de paiement</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select class="form-select" name="compte_tresorerie" required>
+                                    <option value="">-- Payé depuis --</option>
+                                    {% for compte in comptes if compte.classe == 5 %}
+                                    <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Projet -->
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="bi bi-folder me-2"></i>Imputation projet</div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="multiProjetSalaires" onchange="toggleMultiProjet('salaires')">
+                            <label class="form-check-label" for="multiProjetSalaires">Répartir sur plusieurs projets</label>
+                        </div>
+
+                        <div id="singleProjetSalaires">
+                            <select class="form-select" name="projet_id">
+                                <option value="">-- Aucun projet (frais généraux) --</option>
+                                {% for projet in projets %}
+                                <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div id="multiProjetSalairesSection" class="ventilation-section d-none">
+                            <div class="ventilation-header">
+                                <span class="ventilation-title"><i class="bi bi-pie-chart me-2"></i>Répartition</span>
+                            </div>
+                            <div id="ventilationItemsSalaires">
+                                <div class="ventilation-row">
+                                    <select class="form-select form-select-sm ventilation-projet" onchange="updateVentilation('salaires')">
+                                        <option value="">-- Projet --</option>
+                                        {% for projet in projets %}
+                                        <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom[:25] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="number" class="form-control form-control-sm ventilation-pct"
+                                           placeholder="%" min="0" max="100" step="1" oninput="updateVentilation('salaires')">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVentilationRow(this, 'salaires')">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success btn-add-allocation" onclick="addVentilationRow('salaires')">
+                                <i class="bi bi-plus me-1"></i>Ajouter un projet
+                            </button>
+                            <div class="ventilation-total">
+                                <span>Total répartition</span>
+                                <span id="totalVentilationSalaires" class="total-badge badge bg-warning">0%</span>
+                            </div>
+                            <input type="hidden" name="ventilation" id="ventilationDataSalaires" value="">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer les salaires
+                        </button>
+                        <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card mt-3">
+                <div class="card-header">Comptes utilisés</div>
+                <div class="card-body small">
+                    <p class="mb-1"><strong>661</strong> - Rémunérations du personnel</p>
+                    <p class="mb-1"><strong>664</strong> - Charges sociales</p>
+                    <p class="mb-1"><strong>421</strong> - Personnel, rémunérations dues</p>
+                    <p class="mb-0"><strong>43x</strong> - Organismes sociaux</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Formulaire MODE EXPERT (écriture manuelle) -->
+<form method="POST" id="formExpert" class="operation-form">
+    <input type="hidden" name="operation_type" value="expert">
+    <div class="row">
+        <div class="col-md-8">
             <div class="card mb-3">
-                <div class="card-header">Informations générales</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-sliders me-2"></i>Mode expert - Écriture manuelle</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="backToChoice()">
+                        <i class="bi bi-arrow-left"></i> Retour
+                    </button>
+                </div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label for="date_piece" class="form-label">Date *</label>
-                            <input type="date" class="form-control" id="date_piece" name="date_piece"
-                                   value="{{ today }}" required>
+                            <label class="form-label">Date *</label>
+                            <input type="date" class="form-control" name="date_piece" value="{{ today }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="journal_id" class="form-label">Journal *</label>
-                            <select class="form-select" id="journal_id" name="journal_id" required>
+                            <label class="form-label">Journal *</label>
+                            <select class="form-select" name="journal_id" required>
                                 {% for journal in journaux %}
-                                <option value="{{ journal.id }}" data-type="{{ journal.type_journal }}">
-                                    {{ journal.code }} - {{ journal.nom }}
-                                </option>
+                                <option value="{{ journal.id }}">{{ journal.code }} - {{ journal.nom }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="exercice_id" class="form-label">Exercice *</label>
-                            <select class="form-select" id="exercice_id" name="exercice_id" required>
+                            <label class="form-label">Exercice *</label>
+                            <select class="form-select" name="exercice_id" required>
                                 {% for ex in exercices %}
                                 <option value="{{ ex.id }}">{{ ex.annee }}</option>
                                 {% endfor %}
@@ -164,202 +864,91 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-8">
-                            <label for="libelle" class="form-label">Libellé *</label>
-                            <input type="text" class="form-control" id="libelle" name="libelle" required
-                                   placeholder="Ex: Paiement facture fournisseur X">
+                            <label class="form-label">Libellé *</label>
+                            <input type="text" class="form-control" name="libelle" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="reference" class="form-label">Référence</label>
-                            <input type="text" class="form-control" id="reference" name="reference"
-                                   placeholder="N° facture, chèque...">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <label for="devise_id" class="form-label">Devise</label>
-                            <select class="form-select" id="devise_id" name="devise_id">
-                                {% for devise in devises %}
-                                <option value="{{ devise.id }}" {% if devise.code == 'XOF' %}selected{% endif %}>
-                                    {{ devise.code }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="taux_change" class="form-label">Taux de change</label>
-                            <input type="number" class="form-control" id="taux_change" name="taux_change"
-                                   value="1" step="0.000001">
+                            <label class="form-label">Référence</label>
+                            <input type="text" class="form-control" name="reference">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Lignes d'écriture -->
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>Lignes d'écriture</span>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="ajouterLigne()">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="ajouterLigneExpert()">
                         <i class="bi bi-plus"></i> Ajouter ligne
                     </button>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm" id="lignesTable">
+                        <table class="table table-sm">
                             <thead>
                                 <tr>
-                                    <th style="width: 200px;">Compte *</th>
-                                    <th style="width: 220px;">Imputation analytique</th>
-                                    <th>Libellé</th>
-                                    <th style="width: 110px;">Débit</th>
-                                    <th style="width: 110px;">Crédit</th>
+                                    <th>Compte *</th>
+                                    <th>Projet</th>
+                                    <th style="width: 120px;">Débit</th>
+                                    <th style="width: 120px;">Crédit</th>
                                     <th style="width: 40px;"></th>
                                 </tr>
                             </thead>
-                            <tbody id="lignesBody">
-                                <!-- Ligne 1 -->
-                                <tr class="ligne-ecriture" data-ligne-index="0">
+                            <tbody id="lignesExpert">
+                                <tr>
                                     <td>
-                                        <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+                                        <select class="form-select form-select-sm" name="compte_id[]" required>
                                             <option value="">-- Compte --</option>
                                             {% for compte in comptes %}
-                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
-                                                {{ compte.numero }} - {{ compte.intitule[:25] }}
-                                            </option>
+                                            <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule[:30] }}</option>
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td class="imputation-cell">
-                                        <div class="simple-mode">
-                                            <div class="d-flex gap-1">
-                                                <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
-                                                    <option value="">-- Projet --</option>
-                                                    {% for projet in projets %}
-                                                    <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
-                                                        onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
-                                                    <i class="bi bi-pie-chart"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="ventilation-mode d-none">
-                                            <div class="ventilation-container">
-                                                <div class="ventilation-items">
-                                                    <div class="ventilation-item">
-                                                        <select class="form-select form-select-sm ventilation-projet">
-                                                            <option value="">Projet</option>
-                                                            {% for projet in projets %}
-                                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <input type="number" class="form-control form-control-sm ventilation-pct"
-                                                               placeholder="%" min="0" max="100" step="0.01">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
-                                                            <i class="bi bi-x"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
-                                                        <i class="bi bi-plus"></i> Projet
-                                                    </button>
-                                                    <small class="ventilation-total text-muted">Total: 0%</small>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
-                                                        Simple
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
+                                    <td>
+                                        <select class="form-select form-select-sm" name="projet_id[]">
+                                            <option value="">--</option>
+                                            {% for projet in projets %}
+                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                            {% endfor %}
+                                        </select>
                                     </td>
                                     <td>
-                                        <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
+                                        <input type="number" class="form-control form-control-sm debit-expert"
+                                               name="debit[]" step="0.01" onchange="calculerTotauxExpert()">
                                     </td>
                                     <td>
-                                        <input type="number" class="form-control form-control-sm debit-input"
-                                               name="debit[]" step="0.01" onchange="calculerTotaux()">
+                                        <input type="number" class="form-control form-control-sm credit-expert"
+                                               name="credit[]" step="0.01" onchange="calculerTotauxExpert()">
                                     </td>
-                                    <td>
-                                        <input type="number" class="form-control form-control-sm credit-input"
-                                               name="credit[]" step="0.01" onchange="calculerTotaux()">
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
+                                    <td></td>
                                 </tr>
-                                <!-- Ligne 2 -->
-                                <tr class="ligne-ecriture" data-ligne-index="1">
+                                <tr>
                                     <td>
-                                        <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+                                        <select class="form-select form-select-sm" name="compte_id[]" required>
                                             <option value="">-- Compte --</option>
                                             {% for compte in comptes %}
-                                            <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
-                                                {{ compte.numero }} - {{ compte.intitule[:25] }}
-                                            </option>
+                                            <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule[:30] }}</option>
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td class="imputation-cell">
-                                        <div class="simple-mode">
-                                            <div class="d-flex gap-1">
-                                                <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
-                                                    <option value="">-- Projet --</option>
-                                                    {% for projet in projets %}
-                                                    <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
-                                                        onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
-                                                    <i class="bi bi-pie-chart"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="ventilation-mode d-none">
-                                            <div class="ventilation-container">
-                                                <div class="ventilation-items">
-                                                    <div class="ventilation-item">
-                                                        <select class="form-select form-select-sm ventilation-projet">
-                                                            <option value="">Projet</option>
-                                                            {% for projet in projets %}
-                                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <input type="number" class="form-control form-control-sm ventilation-pct"
-                                                               placeholder="%" min="0" max="100" step="0.01">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
-                                                            <i class="bi bi-x"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
-                                                        <i class="bi bi-plus"></i> Projet
-                                                    </button>
-                                                    <small class="ventilation-total text-muted">Total: 0%</small>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
-                                                        Simple
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
+                                    <td>
+                                        <select class="form-select form-select-sm" name="projet_id[]">
+                                            <option value="">--</option>
+                                            {% for projet in projets %}
+                                            <option value="{{ projet.id }}">{{ projet.code }}</option>
+                                            {% endfor %}
+                                        </select>
                                     </td>
                                     <td>
-                                        <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
+                                        <input type="number" class="form-control form-control-sm debit-expert"
+                                               name="debit[]" step="0.01" onchange="calculerTotauxExpert()">
                                     </td>
                                     <td>
-                                        <input type="number" class="form-control form-control-sm debit-input"
-                                               name="debit[]" step="0.01" onchange="calculerTotaux()">
+                                        <input type="number" class="form-control form-control-sm credit-expert"
+                                               name="credit[]" step="0.01" onchange="calculerTotauxExpert()">
                                     </td>
                                     <td>
-                                        <input type="number" class="form-control form-control-sm credit-input"
-                                               name="credit[]" step="0.01" onchange="calculerTotaux()">
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); calculerTotauxExpert();">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </td>
@@ -367,15 +956,15 @@
                             </tbody>
                             <tfoot class="table-light">
                                 <tr>
-                                    <td colspan="3" class="text-end"><strong>Totaux</strong></td>
-                                    <td><strong id="totalDebit">0</strong></td>
-                                    <td><strong id="totalCredit">0</strong></td>
+                                    <td colspan="2" class="text-end"><strong>Totaux</strong></td>
+                                    <td><strong id="totalDebitExpert">0</strong></td>
+                                    <td><strong id="totalCreditExpert">0</strong></td>
                                     <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="3" class="text-end">Écart</td>
+                                    <td colspan="2" class="text-end">Écart</td>
                                     <td colspan="2">
-                                        <span id="ecart" class="badge bg-success">0 - Équilibré</span>
+                                        <span id="ecartExpert" class="badge bg-success">Équilibré</span>
                                     </td>
                                     <td></td>
                                 </tr>
@@ -391,7 +980,7 @@
                 <div class="card-header">Actions</div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg" id="btnSubmit">
+                        <button type="submit" class="btn btn-primary btn-lg" id="btnSubmitExpert">
                             <i class="bi bi-check-circle me-2"></i>Enregistrer
                         </button>
                         <a href="{{ url_for('liste_ecritures') }}" class="btn btn-outline-secondary">
@@ -400,113 +989,67 @@
                     </div>
                 </div>
             </div>
-
             <div class="card mt-3">
-                <div class="card-header">Aide</div>
+                <div class="card-header">Rappel</div>
                 <div class="card-body small">
-                    <p><strong>Équilibre :</strong> Débit = Crédit</p>
+                    <p class="mb-1"><strong>Débit = Crédit</strong> obligatoire</p>
                     <hr>
-                    <p><strong><i class="bi bi-pie-chart"></i> Ventilation :</strong></p>
-                    <p class="text-muted">Cliquez sur l'icône camembert pour répartir une charge sur plusieurs projets (ex: loyer 60% LED + 40% SOR4D)</p>
-                    <hr>
-                    <p><strong>Charges (6xx)</strong> = Débit</p>
-                    <p><strong>Produits (7xx)</strong> = Crédit</p>
-                    <p><strong>Banque sortie</strong> = Crédit</p>
+                    <p class="mb-1">Charges (6xx) → Débit</p>
+                    <p class="mb-1">Produits (7xx) → Crédit</p>
+                    <p class="mb-0">Banque sortie → Crédit</p>
                 </div>
             </div>
         </div>
     </div>
 </form>
 
-<!-- Template pour nouvelle ligne -->
-<template id="ligneTemplate">
-    <tr class="ligne-ecriture">
+<!-- Template ligne expert -->
+<template id="ligneExpertTemplate">
+    <tr>
         <td>
-            <select class="form-select form-select-sm compte-select" name="compte_id[]" required>
+            <select class="form-select form-select-sm" name="compte_id[]" required>
                 <option value="">-- Compte --</option>
                 {% for compte in comptes %}
-                <option value="{{ compte.id }}" data-classe="{{ compte.classe }}">
-                    {{ compte.numero }} - {{ compte.intitule[:25] }}
-                </option>
+                <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule[:30] }}</option>
                 {% endfor %}
             </select>
         </td>
-        <td class="imputation-cell">
-            <div class="simple-mode">
-                <div class="d-flex gap-1">
-                    <select class="form-select form-select-sm projet-simple" name="projet_id[]" style="flex:1;">
-                        <option value="">-- Projet --</option>
-                        {% for projet in projets %}
-                        <option value="{{ projet.id }}">{{ projet.code }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="button" class="btn btn-outline-secondary btn-sm btn-ventiler"
-                            onclick="activerVentilation(this)" title="Ventiler sur plusieurs projets">
-                        <i class="bi bi-pie-chart"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="ventilation-mode d-none">
-                <div class="ventilation-container">
-                    <div class="ventilation-items">
-                        <div class="ventilation-item">
-                            <select class="form-select form-select-sm ventilation-projet">
-                                <option value="">Projet</option>
-                                {% for projet in projets %}
-                                <option value="{{ projet.id }}">{{ projet.code }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="number" class="form-control form-control-sm ventilation-pct"
-                                   placeholder="%" min="0" max="100" step="0.01">
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
-                                <i class="bi bi-x"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="ajouterVentilation(this)">
-                            <i class="bi bi-plus"></i> Projet
-                        </button>
-                        <small class="ventilation-total text-muted">Total: 0%</small>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desactiverVentilation(this)">
-                            Simple
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <input type="hidden" class="ventilation-data" name="ventilation[]" value="">
+        <td>
+            <select class="form-select form-select-sm" name="projet_id[]">
+                <option value="">--</option>
+                {% for projet in projets %}
+                <option value="{{ projet.id }}">{{ projet.code }}</option>
+                {% endfor %}
+            </select>
         </td>
         <td>
-            <input type="text" class="form-control form-control-sm" name="ligne_libelle[]">
+            <input type="number" class="form-control form-control-sm debit-expert"
+                   name="debit[]" step="0.01" onchange="calculerTotauxExpert()">
         </td>
         <td>
-            <input type="number" class="form-control form-control-sm debit-input"
-                   name="debit[]" step="0.01" onchange="calculerTotaux()">
+            <input type="number" class="form-control form-control-sm credit-expert"
+                   name="credit[]" step="0.01" onchange="calculerTotauxExpert()">
         </td>
         <td>
-            <input type="number" class="form-control form-control-sm credit-input"
-                   name="credit[]" step="0.01" onchange="calculerTotaux()">
-        </td>
-        <td>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerLigne(this)">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); calculerTotauxExpert();">
                 <i class="bi bi-trash"></i>
             </button>
         </td>
     </tr>
 </template>
 
-<!-- Template pour ventilation item -->
-<template id="ventilationItemTemplate">
-    <div class="ventilation-item">
+<!-- Template ventilation row -->
+<template id="ventilationRowTemplate">
+    <div class="ventilation-row">
         <select class="form-select form-select-sm ventilation-projet">
-            <option value="">Projet</option>
+            <option value="">-- Projet --</option>
             {% for projet in projets %}
-            <option value="{{ projet.id }}">{{ projet.code }}</option>
+            <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom[:25] }}</option>
             {% endfor %}
         </select>
         <input type="number" class="form-control form-control-sm ventilation-pct"
-               placeholder="%" min="0" max="100" step="0.01">
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="supprimerVentilation(this)">
+               placeholder="%" min="0" max="100" step="1">
+        <button type="button" class="btn btn-sm btn-outline-danger">
             <i class="bi bi-x"></i>
         </button>
     </div>
@@ -515,202 +1058,178 @@
 
 {% block extra_js %}
 <script>
-// Configuration des assistants
-const assistants = {
-    fournisseur: { journal: 'AC', libelle: 'Paiement facture ' },
-    bailleur: { journal: 'BQ', libelle: 'Encaissement subvention ' },
-    salaires: { journal: 'SAL', libelle: 'Salaires du mois ' },
-    mission: { journal: 'CA', libelle: 'Frais de mission ' }
-};
+let currentOperation = null;
 
-function selectAssistant(type) {
-    document.querySelectorAll('.assistant-card').forEach(c => c.classList.remove('selected'));
-    if (type !== 'libre') {
-        event.currentTarget.classList.add('selected');
+function selectOperation(type) {
+    currentOperation = type;
+    document.getElementById('operationChoice').style.display = 'none';
+
+    // Hide all forms
+    document.querySelectorAll('.operation-form').forEach(f => f.classList.remove('active'));
+
+    // Show selected form
+    const formId = 'form' + type.charAt(0).toUpperCase() + type.slice(1);
+    document.getElementById(formId).classList.add('active');
+
+    // Mark card as selected
+    document.querySelectorAll('.operation-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+}
+
+function showAdvancedMode() {
+    document.getElementById('operationChoice').style.display = 'none';
+    document.querySelectorAll('.operation-form').forEach(f => f.classList.remove('active'));
+    document.getElementById('formExpert').classList.add('active');
+}
+
+function backToChoice() {
+    document.querySelectorAll('.operation-form').forEach(f => f.classList.remove('active'));
+    document.getElementById('operationChoice').style.display = 'block';
+    document.querySelectorAll('.operation-card').forEach(c => c.classList.remove('selected'));
+}
+
+// Multi-projet toggle
+function toggleMultiProjet(formType) {
+    const checkbox = document.getElementById('multiProjet' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    const single = document.getElementById('singleProjet' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    const multi = document.getElementById('multiProjet' + formType.charAt(0).toUpperCase() + formType.slice(1) + 'Section');
+
+    if (checkbox.checked) {
+        single.classList.add('d-none');
+        multi.classList.remove('d-none');
+    } else {
+        single.classList.remove('d-none');
+        multi.classList.add('d-none');
     }
-    const config = assistants[type];
-    if (!config) return;
-    if (config.journal) {
-        const journalSelect = document.getElementById('journal_id');
-        for (let option of journalSelect.options) {
-            if (option.text.startsWith(config.journal)) {
-                journalSelect.value = option.value;
-                break;
-            }
-        }
-    }
-    if (config.libelle) {
-        document.getElementById('libelle').value = config.libelle;
-    }
-    document.getElementById('libelle').focus();
 }
 
-// Gestion des lignes
-function ajouterLigne() {
-    const tbody = document.getElementById('lignesBody');
-    const template = document.getElementById('ligneTemplate');
-    const ligne = template.content.cloneNode(true);
-    tbody.appendChild(ligne);
-}
+// Ventilation functions
+function addVentilationRow(formType) {
+    const container = document.getElementById('ventilationItems' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    const template = document.getElementById('ventilationRowTemplate');
+    const row = template.content.cloneNode(true);
 
-function supprimerLigne(btn) {
-    const tbody = document.getElementById('lignesBody');
-    if (tbody.querySelectorAll('.ligne-ecriture').length > 2) {
-        btn.closest('tr').remove();
-        calculerTotaux();
-    }
-}
-
-// Gestion de la ventilation
-function activerVentilation(btn) {
-    const cell = btn.closest('.imputation-cell');
-    cell.querySelector('.simple-mode').classList.add('d-none');
-    cell.querySelector('.ventilation-mode').classList.remove('d-none');
-    cell.querySelector('.projet-simple').value = '';
-    cell.querySelector('.projet-simple').removeAttribute('name');
-    updateVentilationTotal(cell);
-}
-
-function desactiverVentilation(btn) {
-    const cell = btn.closest('.imputation-cell');
-    cell.querySelector('.simple-mode').classList.remove('d-none');
-    cell.querySelector('.ventilation-mode').classList.add('d-none');
-    cell.querySelector('.projet-simple').setAttribute('name', 'projet_id[]');
-    cell.querySelector('.ventilation-data').value = '';
-}
-
-function ajouterVentilation(btn) {
-    const container = btn.closest('.ventilation-container');
-    const items = container.querySelector('.ventilation-items');
-    const template = document.getElementById('ventilationItemTemplate');
-    const item = template.content.cloneNode(true);
-    items.appendChild(item);
-
-    // Ajouter les event listeners
-    const newItem = items.lastElementChild;
-    newItem.querySelector('.ventilation-pct').addEventListener('input', function() {
-        updateVentilationTotal(btn.closest('.imputation-cell'));
+    // Add event listeners
+    row.querySelector('.ventilation-projet').addEventListener('change', () => updateVentilation(formType));
+    row.querySelector('.ventilation-pct').addEventListener('input', () => updateVentilation(formType));
+    row.querySelector('button').addEventListener('click', function() {
+        removeVentilationRow(this, formType);
     });
+
+    container.appendChild(row);
 }
 
-function supprimerVentilation(btn) {
-    const cell = btn.closest('.imputation-cell');
-    const items = cell.querySelectorAll('.ventilation-item');
-    if (items.length > 1) {
-        btn.closest('.ventilation-item').remove();
-        updateVentilationTotal(cell);
+function removeVentilationRow(btn, formType) {
+    const container = document.getElementById('ventilationItems' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    if (container.querySelectorAll('.ventilation-row').length > 1) {
+        btn.closest('.ventilation-row').remove();
+        updateVentilation(formType);
     }
 }
 
-function updateVentilationTotal(cell) {
-    const items = cell.querySelectorAll('.ventilation-item');
+function updateVentilation(formType) {
+    const container = document.getElementById('ventilationItems' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    const rows = container.querySelectorAll('.ventilation-row');
     let total = 0;
     const ventilations = [];
 
-    items.forEach(item => {
-        const projet = item.querySelector('.ventilation-projet').value;
-        const pct = parseFloat(item.querySelector('.ventilation-pct').value) || 0;
+    rows.forEach(row => {
+        const projet = row.querySelector('.ventilation-projet').value;
+        const pct = parseFloat(row.querySelector('.ventilation-pct').value) || 0;
         total += pct;
         if (projet && pct > 0) {
             ventilations.push({ projet_id: projet, pourcentage: pct });
         }
     });
 
-    const totalSpan = cell.querySelector('.ventilation-total');
-    totalSpan.textContent = `Total: ${total.toFixed(1)}%`;
-    totalSpan.className = total === 100 ? 'text-success' : 'text-danger';
+    const totalBadge = document.getElementById('totalVentilation' + formType.charAt(0).toUpperCase() + formType.slice(1));
+    totalBadge.textContent = total + '%';
 
-    // Stocker les données de ventilation en JSON
-    cell.querySelector('.ventilation-data').value = JSON.stringify(ventilations);
+    if (total === 100) {
+        totalBadge.className = 'total-badge badge bg-success';
+    } else if (total > 100) {
+        totalBadge.className = 'total-badge badge bg-danger';
+    } else {
+        totalBadge.className = 'total-badge badge bg-warning';
+    }
+
+    document.getElementById('ventilationData' + formType.charAt(0).toUpperCase() + formType.slice(1)).value = JSON.stringify(ventilations);
 }
 
-// Ajouter les event listeners aux ventilations existantes
-document.querySelectorAll('.ventilation-pct').forEach(input => {
-    input.addEventListener('input', function() {
-        updateVentilationTotal(this.closest('.imputation-cell'));
-    });
+// Initialize ventilation event listeners
+document.querySelectorAll('#ventilationItemsDepense .ventilation-row').forEach(row => {
+    row.querySelector('.ventilation-projet').addEventListener('change', () => updateVentilation('depense'));
+    row.querySelector('.ventilation-pct').addEventListener('input', () => updateVentilation('depense'));
 });
 
-// Calcul des totaux
-function calculerTotaux() {
+document.querySelectorAll('#ventilationItemsSalaires .ventilation-row').forEach(row => {
+    row.querySelector('.ventilation-projet').addEventListener('change', () => updateVentilation('salaires'));
+    row.querySelector('.ventilation-pct').addEventListener('input', () => updateVentilation('salaires'));
+});
+
+// Calculer le net à payer pour les salaires
+function calculerNetSalaire() {
+    const bruts = parseFloat(document.querySelector('[name="salaires_bruts"]').value) || 0;
+    const retenues = parseFloat(document.querySelector('[name="retenues_salariales"]').value) || 0;
+    const net = bruts - retenues;
+    document.getElementById('netAPayer').value = net > 0 ? net : 0;
+}
+
+// Expert mode functions
+function ajouterLigneExpert() {
+    const tbody = document.getElementById('lignesExpert');
+    const template = document.getElementById('ligneExpertTemplate');
+    tbody.appendChild(template.content.cloneNode(true));
+}
+
+function calculerTotauxExpert() {
     let totalDebit = 0;
     let totalCredit = 0;
 
-    document.querySelectorAll('.debit-input').forEach(input => {
+    document.querySelectorAll('.debit-expert').forEach(input => {
         totalDebit += parseFloat(input.value) || 0;
     });
 
-    document.querySelectorAll('.credit-input').forEach(input => {
+    document.querySelectorAll('.credit-expert').forEach(input => {
         totalCredit += parseFloat(input.value) || 0;
     });
 
-    document.getElementById('totalDebit').textContent = totalDebit.toLocaleString('fr-FR');
-    document.getElementById('totalCredit').textContent = totalCredit.toLocaleString('fr-FR');
+    document.getElementById('totalDebitExpert').textContent = totalDebit.toLocaleString('fr-FR');
+    document.getElementById('totalCreditExpert').textContent = totalCredit.toLocaleString('fr-FR');
 
     const ecart = Math.abs(totalDebit - totalCredit);
-    const ecartSpan = document.getElementById('ecart');
-    const btnSubmit = document.getElementById('btnSubmit');
+    const ecartSpan = document.getElementById('ecartExpert');
+    const btn = document.getElementById('btnSubmitExpert');
 
     if (ecart < 0.01) {
         ecartSpan.className = 'badge bg-success';
-        ecartSpan.textContent = '0 - Équilibré';
-        btnSubmit.disabled = false;
+        ecartSpan.textContent = 'Équilibré';
+        btn.disabled = false;
     } else {
         ecartSpan.className = 'badge bg-danger';
-        ecartSpan.textContent = ecart.toLocaleString('fr-FR') + ' - Déséquilibré';
-        btnSubmit.disabled = true;
+        ecartSpan.textContent = ecart.toLocaleString('fr-FR') + ' FCFA';
+        btn.disabled = true;
     }
 }
 
-// Validation avant soumission
-document.getElementById('ecritureForm').addEventListener('submit', function(e) {
-    let totalDebit = 0;
-    let totalCredit = 0;
-
-    document.querySelectorAll('.debit-input').forEach(input => {
-        totalDebit += parseFloat(input.value) || 0;
-    });
-
-    document.querySelectorAll('.credit-input').forEach(input => {
-        totalCredit += parseFloat(input.value) || 0;
-    });
-
-    if (Math.abs(totalDebit - totalCredit) >= 0.01) {
-        e.preventDefault();
-        alert('L\'écriture doit être équilibrée (Débit = Crédit)');
-        return false;
-    }
-
-    if (totalDebit === 0) {
-        e.preventDefault();
-        alert('L\'écriture ne peut pas être vide');
-        return false;
-    }
-
-    // Vérifier les ventilations
-    let ventilationError = false;
-    document.querySelectorAll('.imputation-cell').forEach(cell => {
-        const ventilationMode = !cell.querySelector('.ventilation-mode').classList.contains('d-none');
-        if (ventilationMode) {
-            const data = cell.querySelector('.ventilation-data').value;
-            if (data) {
-                const ventilations = JSON.parse(data);
+// Form validation
+document.querySelectorAll('.operation-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        // Check ventilation if multi-projet is enabled
+        const multiProjetCheckbox = form.querySelector('[id^="multiProjet"]:not([id$="Section"])');
+        if (multiProjetCheckbox && multiProjetCheckbox.checked) {
+            const dataField = form.querySelector('[id^="ventilationData"]');
+            if (dataField && dataField.value) {
+                const ventilations = JSON.parse(dataField.value);
                 const total = ventilations.reduce((sum, v) => sum + v.pourcentage, 0);
                 if (Math.abs(total - 100) > 0.01) {
-                    ventilationError = true;
+                    e.preventDefault();
+                    alert('La répartition multi-projets doit totaliser 100%');
+                    return false;
                 }
             }
         }
     });
-
-    if (ventilationError) {
-        e.preventDefault();
-        alert('Les ventilations doivent totaliser 100%');
-        return false;
-    }
 });
-
-// Init
-calculerTotaux();
 </script>
 {% endblock %}

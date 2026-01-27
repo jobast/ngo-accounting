@@ -7,15 +7,10 @@
         @page {
             size: A4;
             margin: 2cm;
-            @top-right {
-                content: "Page " counter(page) " / " counter(pages);
-                font-size: 9pt;
-                color: #666;
-            }
         }
 
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: Helvetica, Arial, sans-serif;
             font-size: 10pt;
             color: #333;
             line-height: 1.4;
@@ -45,7 +40,6 @@
             background-color: #f5f5f5;
             padding: 15px;
             margin-bottom: 20px;
-            border-radius: 5px;
         }
 
         .info-box table {
@@ -116,7 +110,7 @@
             padding: 8px;
         }
 
-        table.data-table tbody tr.detail-row td:first-child {
+        table.data-table tbody tr.detail-row td.indent {
             padding-left: 20px;
         }
 
@@ -132,43 +126,11 @@
             text-align: right;
         }
 
-        .progress-bar-container {
-            width: 60px;
-            height: 12px;
-            background-color: #e9ecef;
-            border-radius: 3px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .progress-bar {
-            height: 100%;
-            border-radius: 3px;
-        }
-
-        .progress-bar.green { background-color: #28a745; }
-        .progress-bar.yellow { background-color: #ffc107; }
-        .progress-bar.red { background-color: #dc3545; }
-
         .text-danger { color: #dc3545; }
         .text-success { color: #28a745; }
-        .text-warning { color: #ffc107; }
-
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 8pt;
-            color: #999;
-            padding: 10px;
-            border-top: 1px solid #ddd;
-        }
 
         .signature-section {
             margin-top: 40px;
-            page-break-inside: avoid;
         }
 
         .signature-section table {
@@ -186,6 +148,15 @@
             border-top: 1px solid #333;
             width: 200px;
             margin: 40px auto 5px auto;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            padding: 10px;
+            border-top: 1px solid #ddd;
         }
     </style>
 </head>
@@ -221,15 +192,16 @@
 
     <div class="summary-box">
         <div>
-            <span class="big-number">{{ "{:,.0f}".format(total_prevu) }}</span>
+            <span class="big-number">{{ "{:,.0f}".format(total_prevu|default(0)|float) }}</span>
             <span class="small-text">Budget prévu</span>
         </div>
         <div>
-            <span class="big-number">{{ "{:,.0f}".format(total_realise) }}</span>
+            <span class="big-number">{{ "{:,.0f}".format(total_realise|default(0)|float) }}</span>
             <span class="small-text">Réalisé</span>
         </div>
         <div>
-            <strong>Taux d'exécution: {{ "%.1f"|format(total_realise/total_prevu*100) if total_prevu > 0 else 0 }}%</strong>
+            {% set taux_exec = (total_realise / total_prevu * 100) if total_prevu and total_prevu > 0 else 0 %}
+            <strong>Taux d'exécution: {{ "%.1f"|format(taux_exec|float) }}%</strong>
         </div>
     </div>
 
@@ -246,32 +218,30 @@
         </thead>
         <tbody>
             {% for cat_data in rapport %}
+            {% set cat_ecart = (cat_data.total_prevu|default(0)|float) - (cat_data.total_realise|default(0)|float) %}
+            {% set cat_taux = (cat_data.total_realise / cat_data.total_prevu * 100) if cat_data.total_prevu and cat_data.total_prevu > 0 else 0 %}
             <tr class="category-row">
                 <td colspan="2">{{ cat_data.categorie.nom }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(cat_data.total_prevu) }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(cat_data.total_realise) }}</td>
-                <td class="text-right {% if cat_data.total_prevu - cat_data.total_realise < 0 %}text-danger{% endif %}">
-                    {{ "{:,.0f}".format(cat_data.total_prevu - cat_data.total_realise) }}
+                <td class="text-right">{{ "{:,.0f}".format(cat_data.total_prevu|default(0)|float) }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(cat_data.total_realise|default(0)|float) }}</td>
+                <td class="text-right {% if cat_ecart < 0 %}text-danger{% endif %}">
+                    {{ "{:,.0f}".format(cat_ecart) }}
                 </td>
                 <td class="text-right">
-                    {{ "%.0f"|format(cat_data.total_realise/cat_data.total_prevu*100) if cat_data.total_prevu > 0 else 0 }}%
+                    {{ "%.0f"|format(cat_taux|float) }}%
                 </td>
             </tr>
             {% for item in cat_data.lignes %}
             <tr class="detail-row">
-                <td>{{ item.ligne.code }}</td>
+                <td class="indent">{{ item.ligne.code }}</td>
                 <td>{{ item.ligne.intitule }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(item.prevu) }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(item.realise) }}</td>
-                <td class="text-right {% if item.ecart < 0 %}text-danger{% endif %}">
-                    {{ "{:,.0f}".format(item.ecart) }}
+                <td class="text-right">{{ "{:,.0f}".format(item.prevu|default(0)|float) }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(item.realise|default(0)|float) }}</td>
+                <td class="text-right {% if item.ecart|default(0) < 0 %}text-danger{% endif %}">
+                    {{ "{:,.0f}".format(item.ecart|default(0)|float) }}
                 </td>
                 <td class="text-right">
-                    <div class="progress-bar-container">
-                        <div class="progress-bar {% if item.taux > 100 %}red{% elif item.taux > 80 %}yellow{% else %}green{% endif %}"
-                             style="width: {{ [item.taux, 100]|min }}%"></div>
-                    </div>
-                    {{ "%.0f"|format(item.taux) }}%
+                    {{ "%.0f"|format(item.taux|default(0)|float) }}%
                 </td>
             </tr>
             {% endfor %}
@@ -280,10 +250,10 @@
         <tfoot>
             <tr>
                 <td colspan="2">TOTAL GÉNÉRAL</td>
-                <td class="text-right">{{ "{:,.0f}".format(total_prevu) }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(total_realise) }}</td>
-                <td class="text-right">{{ "{:,.0f}".format(total_prevu - total_realise) }}</td>
-                <td class="text-right">{{ "%.1f"|format(total_realise/total_prevu*100) if total_prevu > 0 else 0 }}%</td>
+                <td class="text-right">{{ "{:,.0f}".format(total_prevu|default(0)|float) }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(total_realise|default(0)|float) }}</td>
+                <td class="text-right">{{ "{:,.0f}".format((total_prevu|default(0)|float) - (total_realise|default(0)|float)) }}</td>
+                <td class="text-right">{{ "%.1f"|format(taux_exec|float) }}%</td>
             </tr>
         </tfoot>
     </table>
@@ -306,7 +276,7 @@
     </div>
 
     <div class="footer">
-        CREATES GIE - Système Comptable SYSCOHADA<br>
+        CREATES GIE - Système Comptable SYSCOHADA<br/>
         Rapport généré le {{ date_generation.strftime('%d/%m/%Y à %H:%M') }} | Confidentiel
     </div>
 </body>

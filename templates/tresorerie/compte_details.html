@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Configurer {{ compte.numero }} - CREATES{% endblock %}
+
+{% block extra_css %}
+<style>
+    .type-selector {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .type-option {
+        flex: 1;
+        padding: 20px;
+        border: 2px solid #dee2e6;
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .type-option:hover {
+        border-color: var(--primary-color);
+    }
+    .type-option.selected {
+        border-color: var(--primary-color);
+        background: #f0fff4;
+    }
+    .type-option .icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    .type-option.banque .icon { color: #1976d2; }
+    .type-option.caisse .icon { color: #f57c00; }
+    .type-option.mobile_money .icon { color: #388e3c; }
+
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .form-section-title {
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: var(--primary-color);
+    }
+
+    .details-banque, .details-caisse, .details-mobile_money {
+        display: none;
+    }
+    .details-banque.active, .details-caisse.active, .details-mobile_money.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_comptes_tresorerie') }}">Comptes de trésorerie</a></li>
+            <li class="breadcrumb-item active">{{ compte.numero }}</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-gear me-2"></i>Configurer {{ compte.numero }} - {{ compte.intitule }}</h2>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Type de compte -->
+            <div class="card mb-4">
+                <div class="card-header">Type de compte</div>
+                <div class="card-body">
+                    <div class="type-selector">
+                        <div class="type-option banque {% if not details.type_tresorerie or details.type_tresorerie == 'banque' %}selected{% endif %}" onclick="selectType('banque')">
+                            <div class="icon"><i class="bi bi-bank"></i></div>
+                            <strong>Banque</strong>
+                            <br><small class="text-muted">CBAO, Ecobank, BICIS...</small>
+                        </div>
+                        <div class="type-option caisse {% if details.type_tresorerie == 'caisse' %}selected{% endif %}" onclick="selectType('caisse')">
+                            <div class="icon"><i class="bi bi-cash-stack"></i></div>
+                            <strong>Caisse</strong>
+                            <br><small class="text-muted">Espèces sur place</small>
+                        </div>
+                        <div class="type-option mobile_money {% if details.type_tresorerie == 'mobile_money' %}selected{% endif %}" onclick="selectType('mobile_money')">
+                            <div class="icon"><i class="bi bi-phone"></i></div>
+                            <strong>Mobile Money</strong>
+                            <br><small class="text-muted">Wave, Orange Money...</small>
+                        </div>
+                    </div>
+                    <input type="hidden" name="type_tresorerie" id="type_tresorerie" value="{{ details.type_tresorerie or 'banque' }}">
+                </div>
+            </div>
+
+            <!-- Détails Banque -->
+            <div class="details-banque {% if not details.type_tresorerie or details.type_tresorerie == 'banque' %}active{% endif %}">
+                <div class="card mb-4">
+                    <div class="card-header"><i class="bi bi-bank me-2"></i>Informations bancaires</div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nom de la banque</label>
+                                <select class="form-select" name="nom_banque">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option value="CBAO" {% if details.nom_banque == 'CBAO' %}selected{% endif %}>CBAO Groupe Attijariwafa Bank</option>
+                                    <option value="BICIS" {% if details.nom_banque == 'BICIS' %}selected{% endif %}>BICIS (BNP Paribas)</option>
+                                    <option value="SGBS" {% if details.nom_banque == 'SGBS' %}selected{% endif %}>Société Générale Sénégal</option>
+                                    <option value="Ecobank" {% if details.nom_banque == 'Ecobank' %}selected{% endif %}>Ecobank Sénégal</option>
+                                    <option value="BOA" {% if details.nom_banque == 'BOA' %}selected{% endif %}>Bank of Africa Sénégal</option>
+                                    <option value="BHS" {% if details.nom_banque == 'BHS' %}selected{% endif %}>Banque de l'Habitat du Sénégal</option>
+                                    <option value="UBA" {% if details.nom_banque == 'UBA' %}selected{% endif %}>United Bank for Africa</option>
+                                    <option value="Orabank" {% if details.nom_banque == 'Orabank' %}selected{% endif %}>Orabank Sénégal</option>
+                                    <option value="Autre" {% if details.nom_banque and details.nom_banque not in ['CBAO', 'BICIS', 'SGBS', 'Ecobank', 'BOA', 'BHS', 'UBA', 'Orabank'] %}selected{% endif %}>Autre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Agence</label>
+                                <input type="text" class="form-control" name="agence" value="{{ details.agence or '' }}" placeholder="Ex: Agence Plateau">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Numéro de compte</label>
+                                <input type="text" class="form-control" name="numero_compte" value="{{ details.numero_compte or '' }}" placeholder="Ex: SN08 0001 0000 0012 3456 7890">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">IBAN</label>
+                                <input type="text" class="form-control" name="iban" value="{{ details.iban or '' }}" placeholder="Ex: SN08 SN00 0100 0000 1234 5678 9012">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Code SWIFT/BIC</label>
+                                <input type="text" class="form-control" name="code_swift" value="{{ details.code_swift or '' }}" placeholder="Ex: CBAOSNDA">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Titulaire du compte</label>
+                                <input type="text" class="form-control" name="titulaire" value="{{ details.titulaire or '' }}" placeholder="Ex: CREATES GIE">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Adresse de l'agence</label>
+                            <input type="text" class="form-control" name="adresse_agence" value="{{ details.adresse_agence or '' }}" placeholder="Ex: Avenue Albert Sarraut, Dakar">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails Mobile Money -->
+            <div class="details-mobile_money {% if details.type_tresorerie == 'mobile_money' %}active{% endif %}">
+                <div class="card mb-4">
+                    <div class="card-header"><i class="bi bi-phone me-2"></i>Informations Mobile Money</div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Opérateur</label>
+                                <select class="form-select" name="operateur">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option value="Wave" {% if details.operateur == 'Wave' %}selected{% endif %}>Wave</option>
+                                    <option value="Orange Money" {% if details.operateur == 'Orange Money' %}selected{% endif %}>Orange Money</option>
+                                    <option value="Free Money" {% if details.operateur == 'Free Money' %}selected{% endif %}>Free Money</option>
+                                    <option value="E-Money" {% if details.operateur == 'E-Money' %}selected{% endif %}>E-Money (Expresso)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Numéro de téléphone</label>
+                                <input type="tel" class="form-control" name="numero_telephone" value="{{ details.numero_telephone or '' }}" placeholder="Ex: +221 77 123 45 67">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nom du marchand (si compte pro)</label>
+                            <input type="text" class="form-control" name="nom_marchand" value="{{ details.nom_marchand or '' }}" placeholder="Ex: CREATES GIE">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails Caisse -->
+            <div class="details-caisse {% if details.type_tresorerie == 'caisse' %}active{% endif %}">
+                <div class="card mb-4">
+                    <div class="card-header"><i class="bi bi-cash-stack me-2"></i>Informations Caisse</div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Une caisse représente les espèces conservées sur place. Pas de détails supplémentaires requis.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations générales -->
+            <div class="card">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Devise</label>
+                            <select class="form-select" name="devise_id">
+                                {% for devise in devises %}
+                                <option value="{{ devise.id }}" {% if details.devise_id == devise.id or (not details.devise_id and devise.code == 'XOF') %}selected{% endif %}>
+                                    {{ devise.code }} - {{ devise.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Solde d'ouverture</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="solde_ouverture" value="{{ details.solde_ouverture or 0 }}" step="0.01">
+                                <span class="input-group-text">FCFA</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date d'ouverture</label>
+                            <input type="date" class="form-control" name="date_ouverture" value="{{ details.date_ouverture.strftime('%Y-%m-%d') if details.date_ouverture else '' }}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Plafond (optionnel)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="plafond" value="{{ details.plafond or '' }}" step="0.01" placeholder="Limite de solde">
+                                <span class="input-group-text">FCFA</span>
+                            </div>
+                            <small class="text-muted">Utile pour les caisses (plafond réglementaire)</small>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Informations complémentaires...">{{ details.notes or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer
+                        </button>
+                        <a href="{{ url_for('liste_comptes_tresorerie') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">Compte comptable</div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Numéro:</strong> {{ compte.numero }}</p>
+                    <p class="mb-1"><strong>Intitulé:</strong> {{ compte.intitule }}</p>
+                    <p class="mb-0"><strong>Classe:</strong> {{ compte.classe }} (Trésorerie)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectType(type) {
+    // Update hidden field
+    document.getElementById('type_tresorerie').value = type;
+
+    // Update visual selection
+    document.querySelectorAll('.type-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector('.type-option.' + type).classList.add('selected');
+
+    // Show/hide detail sections
+    document.querySelectorAll('.details-banque, .details-caisse, .details-mobile_money').forEach(el => el.classList.remove('active'));
+    document.querySelector('.details-' + type).classList.add('active');
+}
+</script>
+{% endblock %}

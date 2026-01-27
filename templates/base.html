@@ -142,6 +142,11 @@
                     <i class="bi bi-folder"></i> Projets
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'fournisseur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_fournisseurs') }}">
+                    <i class="bi bi-building"></i> Fournisseurs
+                </a>
+            </li>
             <li class="nav-item mt-3">
                 <small class="text-white-50 px-3">COMPTABILITÉ</small>
             </li>
@@ -153,6 +158,34 @@
             <li class="nav-item">
                 <a class="nav-link {% if 'ecriture' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_ecritures') }}">
                     <i class="bi bi-journal-text"></i> Écritures
+                </a>
+            </li>
+            <li class="nav-item mt-3">
+                <small class="text-white-50 px-3">TRÉSORERIE</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'compte' in request.endpoint|default('') and 'tresorerie' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_comptes_tresorerie') }}">
+                    <i class="bi bi-credit-card"></i> Comptes & Banques
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'reconciliation' in request.endpoint|default('') and 'analytique' not in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_reconciliations') }}">
+                    <i class="bi bi-bank"></i> Réconciliation bancaire
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'avance' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_avances') }}">
+                    <i class="bi bi-cash-stack"></i> Avances
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'petite_caisse' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('petite_caisse') }}">
+                    <i class="bi bi-wallet2"></i> Petite caisse
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'immobilisation' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_immobilisations') }}">
+                    <i class="bi bi-building"></i> Immobilisations
                 </a>
             </li>
             <li class="nav-item mt-3">
@@ -178,6 +211,26 @@
                     <i class="bi bi-arrow-left-right"></i> Réconciliation
                 </a>
             </li>
+            {% if current_user.is_authenticated and current_user.role in ['comptable', 'directeur'] %}
+            <li class="nav-item mt-3">
+                <small class="text-white-50 px-3">OUTILS</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'import' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('import_ecritures_page') }}">
+                    <i class="bi bi-file-earmark-arrow-up"></i> Import Excel
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'modeles' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_modeles_ecritures') }}">
+                    <i class="bi bi-journal-bookmark"></i> Modèles écritures
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'taux' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_taux_change') }}">
+                    <i class="bi bi-currency-exchange"></i> Taux de change
+                </a>
+            </li>
+            {% endif %}
             {% if current_user.is_authenticated and current_user.role == 'directeur' %}
             <li class="nav-item mt-3">
                 <small class="text-white-50 px-3">ADMINISTRATION</small>
@@ -185,6 +238,16 @@
             <li class="nav-item">
                 <a class="nav-link {% if 'utilisateur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_utilisateurs') }}">
                     <i class="bi bi-people-fill"></i> Utilisateurs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'exercice' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_exercices') }}">
+                    <i class="bi bi-calendar3"></i> Exercices
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'journal' in request.endpoint|default('') and 'audit' not in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_journaux') }}">
+                    <i class="bi bi-journal-bookmark"></i> Journaux
                 </a>
             </li>
             {% endif %}

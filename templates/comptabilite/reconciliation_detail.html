@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Réconciliation {{ reconciliation.compte.numero }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bank"></i> Réconciliation Bancaire</h2>
+    <div>
+        {% if reconciliation.statut == 'validee' %}
+        <a href="{{ url_for('export_reconciliation_pdf', id=reconciliation.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-file-pdf"></i> Export PDF
+        </a>
+        {% endif %}
+        <a href="{{ url_for('liste_reconciliations') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Retour
+        </a>
+    </div>
+</div>
+
+<!-- Résumé -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Compte</h6>
+                <div class="h4">{{ reconciliation.compte.numero }}</div>
+                <small>{{ reconciliation.compte.intitule }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Solde Relevé</h6>
+                <div class="h4">{{ "{:,.0f}".format(reconciliation.solde_releve) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Solde Comptable</h6>
+                <div class="h4">{{ "{:,.0f}".format(reconciliation.solde_comptable) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {% if reconciliation.ecart == 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+            <div class="card-body text-center">
+                <h6>Écart</h6>
+                <div class="h4">{{ "{:,.0f}".format(reconciliation.ecart) }}</div>
+                <small>FCFA</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Infos -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Informations</div>
+            <div class="card-body">
+                <p><strong>Période:</strong> {{ reconciliation.periode_debut.strftime('%d/%m/%Y') }} - {{ reconciliation.periode_fin.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Date de réconciliation:</strong> {{ reconciliation.date_reconciliation.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Créée par:</strong> {{ reconciliation.cree_par }}</p>
+                <p>
+                    <strong>Statut:</strong>
+                    {% if reconciliation.statut == 'validee' %}
+                    <span class="badge bg-success">Validée par {{ reconciliation.valide_par }}</span>
+                    {% else %}
+                    <span class="badge bg-warning">En cours</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Statistiques</div>
+            <div class="card-body">
+                <p><strong>Écritures pointées:</strong> {{ reconciliation.nb_pointees }} / {{ reconciliation.lignes|length }}</p>
+                <p><strong>Écritures non pointées:</strong> {{ reconciliation.nb_non_pointees }}</p>
+                <div class="progress" style="height: 20px;">
+                    {% set pct = (reconciliation.nb_pointees / reconciliation.lignes|length * 100) if reconciliation.lignes|length > 0 else 0 %}
+                    <div class="progress-bar bg-success" style="width: {{ pct }}%">{{ pct|round(0)|int }}%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lignes à pointer -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Écritures à rapprocher</span>
+        {% if reconciliation.statut != 'validee' and current_user.role == 'directeur' %}
+        <form method="POST" action="{{ url_for('valider_reconciliation', id=reconciliation.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="bi bi-check-circle"></i> Valider la réconciliation
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('pointer_lignes_reconciliation', id=reconciliation.id) }}">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" id="selectAll" class="form-check-input">
+                            </th>
+                            <th>Date</th>
+                            <th>Pièce</th>
+                            <th>Libellé</th>
+                            <th class="text-end">Débit</th>
+                            <th class="text-end">Crédit</th>
+                            <th>Pointée</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ligne in reconciliation.lignes %}
+                        <tr class="{% if ligne.pointee %}table-success{% endif %}">
+                            <td>
+                                <input type="checkbox" name="lignes[]" value="{{ ligne.id }}"
+                                       class="form-check-input ligne-check"
+                                       {% if ligne.pointee %}checked{% endif %}
+                                       {% if reconciliation.statut == 'validee' %}disabled{% endif %}>
+                            </td>
+                            <td>{{ ligne.ligne_ecriture.piece.date_piece.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('detail_ecriture', id=ligne.ligne_ecriture.piece.id) }}">
+                                    {{ ligne.ligne_ecriture.piece.numero }}
+                                </a>
+                            </td>
+                            <td>{{ ligne.ligne_ecriture.libelle or ligne.ligne_ecriture.piece.libelle }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(ligne.ligne_ecriture.debit) if ligne.ligne_ecriture.debit else '' }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(ligne.ligne_ecriture.credit) if ligne.ligne_ecriture.credit else '' }}</td>
+                            <td>
+                                {% if ligne.pointee %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                <small class="text-muted">{{ ligne.date_pointage.strftime('%d/%m') if ligne.date_pointage else '' }}</small>
+                                {% else %}
+                                <i class="bi bi-circle text-muted"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if reconciliation.statut != 'validee' %}
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Enregistrer le pointage
+                </button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.ligne-check').forEach(cb => {
+        if (!cb.disabled) cb.checked = this.checked;
+    });
+});
+</script>
+{% endblock %}

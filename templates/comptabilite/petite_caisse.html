@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Petite Caisse - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-wallet2"></i> Petite Caisse</h2>
+</div>
+
+<!-- Sélection compte -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Compte de caisse</label>
+                <select name="compte_id" class="form-select" onchange="this.form.submit()">
+                    {% for compte in comptes %}
+                    <option value="{{ compte.id }}" {% if compte.id == compte_id %}selected{% endif %}>
+                        {{ compte.numero }} - {{ compte.intitule }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Solde actuel -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card {% if solde >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+            <div class="card-body text-center">
+                <h5 class="text-white-50">Solde Actuel</h5>
+                <div class="display-4">{{ "{:,.0f}".format(solde) }}</div>
+                <div>FCFA</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Manuel Section 3.11.2</h5>
+                <p class="text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    Le journal de caisse doit présenter: solde initial, recettes/dépenses, solde final.
+                    Un inventaire physique mensuel est obligatoire.
+                </p>
+                <a href="{{ url_for('nouvelle_ecriture') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Nouvelle écriture caisse
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mouvements récents -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Mouvements récents</span>
+        <span class="badge bg-secondary">{{ mouvements|length }} derniers mouvements</span>
+    </div>
+    <div class="card-body">
+        {% if mouvements %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Pièce</th>
+                        <th>Libellé</th>
+                        <th class="text-end">Entrée</th>
+                        <th class="text-end">Sortie</th>
+                        <th>Validée</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mouvements %}
+                    <tr>
+                        <td>{{ m.piece.date_piece.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('detail_ecriture', id=m.piece.id) }}">
+                                {{ m.piece.numero }}
+                            </a>
+                        </td>
+                        <td>{{ m.libelle or m.piece.libelle }}</td>
+                        <td class="text-end text-success">
+                            {% if m.debit %}{{ "{:,.0f}".format(m.debit) }}{% endif %}
+                        </td>
+                        <td class="text-end text-danger">
+                            {% if m.credit %}{{ "{:,.0f}".format(m.credit) }}{% endif %}
+                        </td>
+                        <td>
+                            {% if m.piece.valide %}
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            {% else %}
+                            <i class="bi bi-clock text-warning"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-wallet2 display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucun mouvement de caisse enregistré.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

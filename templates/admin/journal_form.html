@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}{% if journal %}Modifier{% else %}Nouveau{% endif %} Journal - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_journaux') }}">Journaux</a></li>
+            <li class="breadcrumb-item active">{% if journal %}{{ journal.code }}{% else %}Nouveau{% endif %}</li>
+        </ol>
+    </nav>
+    <h2>
+        <i class="bi bi-{% if journal %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+        {% if journal %}Modifier le journal {{ journal.code }}{% else %}Nouveau journal{% endif %}
+    </h2>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">Informations du journal</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Code *</label>
+                            <input type="text" class="form-control" name="code"
+                                   value="{{ journal.code if journal else '' }}"
+                                   required maxlength="10" placeholder="Ex: BQ1"
+                                   style="text-transform: uppercase;">
+                            <small class="text-muted">2-4 caractères, ex: AC, VE, BQ1, CA</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Nom *</label>
+                            <input type="text" class="form-control" name="nom"
+                                   value="{{ journal.nom if journal else '' }}"
+                                   required placeholder="Ex: Journal Banque CBAO">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Type de journal *</label>
+                        <select class="form-select" name="type_journal" id="typeJournal" required onchange="updateCompteVisibility()">
+                            <option value="">-- Sélectionner --</option>
+                            <option value="achat" {% if journal and journal.type_journal == 'achat' %}selected{% endif %}>
+                                Achats (AC) - Factures fournisseurs
+                            </option>
+                            <option value="vente" {% if journal and journal.type_journal == 'vente' %}selected{% endif %}>
+                                Ventes (VE) - Factures clients
+                            </option>
+                            <option value="banque" {% if journal and journal.type_journal == 'banque' %}selected{% endif %}>
+                                Banque (BQ) - Opérations bancaires
+                            </option>
+                            <option value="caisse" {% if journal and journal.type_journal == 'caisse' %}selected{% endif %}>
+                                Caisse (CA) - Espèces
+                            </option>
+                            <option value="mobile_money" {% if journal and journal.type_journal == 'mobile_money' %}selected{% endif %}>
+                                Mobile Money (MM) - Wave, Orange Money
+                            </option>
+                            <option value="salaire" {% if journal and journal.type_journal == 'salaire' %}selected{% endif %}>
+                                Salaires (SAL) - Paie
+                            </option>
+                            <option value="od" {% if journal and journal.type_journal == 'od' %}selected{% endif %}>
+                                Opérations Diverses (OD)
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="compteLinkSection" style="display: none;">
+                <div class="card-header">
+                    <i class="bi bi-link-45deg me-2"></i>Liaison au compte de trésorerie
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        Liez ce journal à son compte de trésorerie pour faciliter la saisie des écritures.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Compte de trésorerie associé</label>
+                        <select class="form-select" name="compte_tresorerie_id" id="compteTresorerie">
+                            <option value="">-- Aucun (sélection manuelle) --</option>
+                            {% for compte in comptes_tresorerie %}
+                            <option value="{{ compte.id }}"
+                                    data-type="{% if compte.numero.startswith('52') %}banque{% elif compte.numero.startswith('57') %}caisse{% elif compte.numero.startswith('58') %}mobile_money{% endif %}"
+                                    {% if journal and journal.compte_tresorerie_id == compte.id %}selected{% endif %}>
+                                {{ compte.numero }} - {{ compte.intitule }}
+                                {% if compte.details_bancaires %}
+                                    ({{ compte.details_bancaires.label }})
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted" id="compteHint"></small>
+                    </div>
+
+                    {% if comptes_tresorerie|length == 0 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Aucun compte de trésorerie configuré.
+                        <a href="{{ url_for('nouveau_compte_tresorerie') }}">Créer un compte</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            {% if journal %}Enregistrer{% else %}Créer le journal{% endif %}
+                        </button>
+                        <a href="{{ url_for('liste_journaux') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">Codes standards</div>
+                <div class="card-body small">
+                    <table class="table table-sm mb-0">
+                        <tr><td><strong>AC</strong></td><td>Achats</td></tr>
+                        <tr><td><strong>VE</strong></td><td>Ventes</td></tr>
+                        <tr><td><strong>BQ, BQ1, BQ2</strong></td><td>Banque(s)</td></tr>
+                        <tr><td><strong>CA</strong></td><td>Caisse</td></tr>
+                        <tr><td><strong>WV, MM</strong></td><td>Wave / Mobile Money</td></tr>
+                        <tr><td><strong>SAL</strong></td><td>Salaires</td></tr>
+                        <tr><td><strong>OD</strong></td><td>Opérations Diverses</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateCompteVisibility() {
+    const typeJournal = document.getElementById('typeJournal').value;
+    const compteLinkSection = document.getElementById('compteLinkSection');
+    const compteHint = document.getElementById('compteHint');
+    const compteTresorerie = document.getElementById('compteTresorerie');
+
+    // Afficher la section de liaison pour les journaux de trésorerie
+    if (['banque', 'caisse', 'mobile_money'].includes(typeJournal)) {
+        compteLinkSection.style.display = 'block';
+
+        // Mettre à jour l'indice
+        if (typeJournal === 'banque') {
+            compteHint.textContent = 'Sélectionnez un compte 52x (banque)';
+        } else if (typeJournal === 'caisse') {
+            compteHint.textContent = 'Sélectionnez un compte 57x (caisse)';
+        } else if (typeJournal === 'mobile_money') {
+            compteHint.textContent = 'Sélectionnez un compte 58x (mobile money)';
+        }
+
+        // Filtrer les options (optionnel - juste highlight)
+        Array.from(compteTresorerie.options).forEach(option => {
+            if (option.value && option.dataset.type) {
+                if (option.dataset.type === typeJournal) {
+                    option.style.fontWeight = 'bold';
+                } else {
+                    option.style.fontWeight = 'normal';
+                }
+            }
+        });
+    } else {
+        compteLinkSection.style.display = 'none';
+    }
+}
+
+// Initialiser au chargement
+document.addEventListener('DOMContentLoaded', updateCompteVisibility);
+</script>
+{% endblock %}

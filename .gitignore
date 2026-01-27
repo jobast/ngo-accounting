@@ -5,15 +5,13 @@ __pycache__/
 *.so
 .Python
 venv/
+ENV/
 env/
-.env
+.venv/
 
 # Flask
 instance/
 *.db
-
-# Uploads
-uploads/
 
 # IDE
 .idea/
@@ -25,5 +23,19 @@ uploads/
 .DS_Store
 Thumbs.db
 
+# Uploads (sensibles)
+uploads/*
+!uploads/.gitkeep
+
+# Environment
+.env
+.env.local
+*.env
+
 # Logs
 *.log
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/

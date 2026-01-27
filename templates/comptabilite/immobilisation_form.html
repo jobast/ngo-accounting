@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvelle Immobilisation - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> Nouvelle Immobilisation</h2>
+    <a href="{{ url_for('liste_immobilisations') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Retour
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="designation" class="form-label">Désignation *</label>
+                        <input type="text" class="form-control" id="designation" name="designation" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="categorie" class="form-label">Catégorie *</label>
+                        <select class="form-select" id="categorie" name="categorie" required onchange="updateDuree()">
+                            <option value="">-- Sélectionner --</option>
+                            <option value="informatique">Informatique</option>
+                            <option value="vehicule">Véhicule</option>
+                            <option value="mobilier">Mobilier</option>
+                            <option value="batiment">Bâtiment</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="date_acquisition" class="form-label">Date d'acquisition *</label>
+                        <input type="date" class="form-control" id="date_acquisition" name="date_acquisition" value="{{ today }}" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="valeur_acquisition" class="form-label">Valeur d'acquisition *</label>
+                        <div class="input-group">
+                            <input type="number" step="1" class="form-control" id="valeur_acquisition" name="valeur_acquisition" required>
+                            <span class="input-group-text">FCFA</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="duree_amortissement" class="form-label">Durée d'amortissement (années) *</label>
+                        <input type="number" class="form-control" id="duree_amortissement" name="duree_amortissement" required>
+                        <small class="text-muted" id="duree_info">Sélectionnez une catégorie</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="localisation" class="form-label">Localisation</label>
+                        <input type="text" class="form-control" id="localisation" name="localisation">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="numero_serie" class="form-label">Numéro de série</label>
+                        <input type="text" class="form-control" id="numero_serie" name="numero_serie">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="projet_id" class="form-label">Projet</label>
+                        <select class="form-select" id="projet_id" name="projet_id">
+                            <option value="">-- Aucun projet --</option>
+                            {% for projet in projets %}
+                            <option value="{{ projet.id }}">{{ projet.code }} - {{ projet.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fournisseur" class="form-label">Fournisseur</label>
+                        <input type="text" class="form-control" id="fournisseur" name="fournisseur">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="numero_facture" class="form-label">Numéro de facture</label>
+                        <input type="text" class="form-control" id="numero_facture" name="numero_facture">
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mt-4">Comptes comptables</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="compte_immobilisation_id" class="form-label">Compte d'immobilisation</label>
+                        <select class="form-select" id="compte_immobilisation_id" name="compte_immobilisation_id">
+                            <option value="">-- Sélectionner --</option>
+                            {% for compte in comptes if compte.numero.startswith('2') and not compte.numero.startswith('28') %}
+                            <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="compte_amortissement_id" class="form-label">Compte d'amortissement</label>
+                        <select class="form-select" id="compte_amortissement_id" name="compte_amortissement_id">
+                            <option value="">-- Sélectionner --</option>
+                            {% for compte in comptes if compte.numero.startswith('28') %}
+                            <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="compte_dotation_id" class="form-label">Compte de dotation</label>
+                        <select class="form-select" id="compte_dotation_id" name="compte_dotation_id">
+                            <option value="">-- Sélectionner --</option>
+                            {% for compte in comptes if compte.numero.startswith('68') %}
+                            <option value="{{ compte.id }}">{{ compte.numero }} - {{ compte.intitule }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('liste_immobilisations') }}" class="btn btn-outline-secondary">Annuler</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Créer l'immobilisation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dureesSyscoa = {{ durees_syscoa | tojson }};
+
+function updateDuree() {
+    const categorie = document.getElementById('categorie').value;
+    const dureeInput = document.getElementById('duree_amortissement');
+    const dureeInfo = document.getElementById('duree_info');
+
+    if (categorie && dureesSyscoa[categorie]) {
+        const duree = dureesSyscoa[categorie];
+        dureeInput.value = duree;
+        const taux = (100 / duree).toFixed(2);
+        dureeInfo.textContent = `SYSCOA: ${duree} ans (taux: ${taux}%)`;
+        dureeInfo.classList.add('text-success');
+    } else {
+        dureeInput.value = '';
+        dureeInfo.textContent = 'Sélectionnez une catégorie';
+        dureeInfo.classList.remove('text-success');
+    }
+}
+</script>
+{% endblock %}

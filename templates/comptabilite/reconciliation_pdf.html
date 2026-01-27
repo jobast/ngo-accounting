@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Réconciliation Bancaire - {{ reconciliation.compte.numero }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c5530;
+            margin-bottom: 5px;
+        }
+        .info-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 200px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #2c5530;
+            color: white;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+        .ecart-box {
+            border: 2px solid #2c5530;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .ecart-zero {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+        .ecart-nonzero {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+        }
+        .signature-section {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 45%;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+        .pointee {
+            color: #28a745;
+        }
+        .non-pointee {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CREATES GIE</h1>
+        <h2>Rapport de Réconciliation Bancaire</h2>
+        <p>Période: {{ reconciliation.periode_debut.strftime('%d/%m/%Y') }} - {{ reconciliation.periode_fin.strftime('%d/%m/%Y') }}</p>
+    </div>
+
+    <div class="info-box">
+        <div class="info-row">
+            <span class="info-label">Compte:</span>
+            <span>{{ reconciliation.compte.numero }} - {{ reconciliation.compte.intitule }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Date de réconciliation:</span>
+            <span>{{ reconciliation.date_reconciliation.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Effectuée par:</span>
+            <span>{{ reconciliation.cree_par }}</span>
+        </div>
+        {% if reconciliation.valide_par %}
+        <div class="info-row">
+            <span class="info-label">Validée par:</span>
+            <span>{{ reconciliation.valide_par }} le {{ reconciliation.date_validation.strftime('%d/%m/%Y') }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Résumé -->
+    <table>
+        <tr>
+            <td><strong>Solde relevé bancaire</strong></td>
+            <td class="text-right">{{ "{:,.0f}".format(reconciliation.solde_releve) }} FCFA</td>
+        </tr>
+        <tr>
+            <td><strong>Solde comptable</strong></td>
+            <td class="text-right">{{ "{:,.0f}".format(reconciliation.solde_comptable) }} FCFA</td>
+        </tr>
+        <tr class="total-row">
+            <td><strong>Écart</strong></td>
+            <td class="text-right">{{ "{:,.0f}".format(reconciliation.ecart) }} FCFA</td>
+        </tr>
+    </table>
+
+    <div class="ecart-box {% if reconciliation.ecart == 0 %}ecart-zero{% else %}ecart-nonzero{% endif %}">
+        <strong>
+            {% if reconciliation.ecart == 0 %}
+            RÉCONCILIATION ÉQUILIBRÉE
+            {% else %}
+            ÉCART DE {{ "{:,.0f}".format(reconciliation.ecart|abs) }} FCFA
+            {% endif %}
+        </strong>
+    </div>
+
+    <!-- Détail des écritures -->
+    <h3>Détail des écritures</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Pièce</th>
+                <th>Libellé</th>
+                <th class="text-right">Débit</th>
+                <th class="text-right">Crédit</th>
+                <th class="text-center">Pointée</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set total_debit_pointe = namespace(value=0) %}
+            {% set total_credit_pointe = namespace(value=0) %}
+            {% set total_debit_non_pointe = namespace(value=0) %}
+            {% set total_credit_non_pointe = namespace(value=0) %}
+
+            {% for ligne in reconciliation.lignes %}
+            <tr>
+                <td>{{ ligne.ligne_ecriture.piece.date_piece.strftime('%d/%m/%Y') }}</td>
+                <td>{{ ligne.ligne_ecriture.piece.numero }}</td>
+                <td>{{ ligne.ligne_ecriture.libelle or ligne.ligne_ecriture.piece.libelle }}</td>
+                <td class="text-right">
+                    {% if ligne.ligne_ecriture.debit %}{{ "{:,.0f}".format(ligne.ligne_ecriture.debit) }}{% endif %}
+                </td>
+                <td class="text-right">
+                    {% if ligne.ligne_ecriture.credit %}{{ "{:,.0f}".format(ligne.ligne_ecriture.credit) }}{% endif %}
+                </td>
+                <td class="text-center">
+                    {% if ligne.pointee %}
+                    <span class="pointee">OUI</span>
+                    {% set _ = total_debit_pointe.__setattr__('value', total_debit_pointe.value + (ligne.ligne_ecriture.debit or 0)|float) %}
+                    {% set _ = total_credit_pointe.__setattr__('value', total_credit_pointe.value + (ligne.ligne_ecriture.credit or 0)|float) %}
+                    {% else %}
+                    <span class="non-pointee">NON</span>
+                    {% set _ = total_debit_non_pointe.__setattr__('value', total_debit_non_pointe.value + (ligne.ligne_ecriture.debit or 0)|float) %}
+                    {% set _ = total_credit_non_pointe.__setattr__('value', total_credit_non_pointe.value + (ligne.ligne_ecriture.credit or 0)|float) %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table>
+        <tr>
+            <td><strong>Écritures pointées:</strong></td>
+            <td class="text-right">{{ reconciliation.nb_pointees }}</td>
+        </tr>
+        <tr>
+            <td><strong>Écritures non pointées:</strong></td>
+            <td class="text-right">{{ reconciliation.nb_non_pointees }}</td>
+        </tr>
+    </table>
+
+    <!-- Signatures -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <p><strong>Établi par</strong></p>
+            <div class="signature-line">
+                {{ reconciliation.cree_par }}
+            </div>
+        </div>
+        <div class="signature-box">
+            <p><strong>Validé par</strong></p>
+            <div class="signature-line">
+                {{ reconciliation.valide_par or '_______________' }}
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Document généré le {{ date_generation.strftime('%d/%m/%Y à %H:%M') }}</p>
+        <p>CREATES GIE - Système Comptable</p>
+    </div>
+</body>
+</html>

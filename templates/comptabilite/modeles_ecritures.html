@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Modèles d'Écritures - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-journal-bookmark"></i> Modèles d'Écritures Récurrentes</h2>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if modeles %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Journal</th>
+                        <th>Libellé</th>
+                        <th>Fréquence</th>
+                        <th>Dernière exécution</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for modele in modeles %}
+                    <tr>
+                        <td><strong>{{ modele.nom }}</strong></td>
+                        <td>{{ modele.journal.code }}</td>
+                        <td>{{ modele.libelle }}</td>
+                        <td>
+                            {% if modele.frequence == 'mensuel' %}
+                            <span class="badge bg-info">Mensuel</span>
+                            {% elif modele.frequence == 'trimestriel' %}
+                            <span class="badge bg-warning text-dark">Trimestriel</span>
+                            {% elif modele.frequence == 'annuel' %}
+                            <span class="badge bg-secondary">Annuel</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ modele.derniere_execution.strftime('%d/%m/%Y') if modele.derniere_execution else '-' }}</td>
+                        <td>
+                            {% if modele.actif %}
+                            <span class="badge bg-success">Actif</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if modele.actif %}
+                            <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-play-fill"></i> Générer
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-journal-bookmark display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucun modèle d'écriture défini.</p>
+            <p class="text-muted">
+                Les modèles permettent de générer rapidement des écritures récurrentes
+                (loyer mensuel, salaires, abonnements, etc.)
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header">À propos des modèles</div>
+        <div class="card-body">
+            <p>Les modèles d'écritures permettent de:</p>
+            <ul>
+                <li>Sauvegarder des écritures types pour les opérations récurrentes</li>
+                <li>Générer rapidement une nouvelle écriture à partir d'un modèle</li>
+                <li>Gagner du temps sur les saisies répétitives</li>
+            </ul>
+            <p class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Pour créer un modèle, contactez l'administrateur ou créez-le directement dans la base de données.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau compte de trésorerie - CREATES{% endblock %}
+
+{% block extra_css %}
+<style>
+    .type-selector {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .type-option {
+        flex: 1;
+        padding: 20px;
+        border: 2px solid #dee2e6;
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .type-option:hover {
+        border-color: var(--primary-color);
+    }
+    .type-option.selected {
+        border-color: var(--primary-color);
+        background: #f0fff4;
+    }
+    .type-option .icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    .type-option.banque .icon { color: #1976d2; }
+    .type-option.caisse .icon { color: #f57c00; }
+    .type-option.mobile_money .icon { color: #388e3c; }
+
+    .details-section {
+        display: none;
+    }
+    .details-section.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_comptes_tresorerie') }}">Comptes de trésorerie</a></li>
+            <li class="breadcrumb-item active">Nouveau</li>
+        </ol>
+    </nav>
+    <h2><i class="bi bi-plus-circle me-2"></i>Nouveau compte de trésorerie</h2>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Type de compte -->
+            <div class="card mb-4">
+                <div class="card-header">1. Type de compte</div>
+                <div class="card-body">
+                    <div class="type-selector">
+                        <div class="type-option banque selected" onclick="selectType('banque')">
+                            <div class="icon"><i class="bi bi-bank"></i></div>
+                            <strong>Banque</strong>
+                            <br><small class="text-muted">CBAO, Ecobank, BICIS...</small>
+                        </div>
+                        <div class="type-option caisse" onclick="selectType('caisse')">
+                            <div class="icon"><i class="bi bi-cash-stack"></i></div>
+                            <strong>Caisse</strong>
+                            <br><small class="text-muted">Espèces sur place</small>
+                        </div>
+                        <div class="type-option mobile_money" onclick="selectType('mobile_money')">
+                            <div class="icon"><i class="bi bi-phone"></i></div>
+                            <strong>Mobile Money</strong>
+                            <br><small class="text-muted">Wave, Orange Money...</small>
+                        </div>
+                    </div>
+                    <input type="hidden" name="type_tresorerie" id="type_tresorerie" value="banque">
+                </div>
+            </div>
+
+            <!-- Compte comptable -->
+            <div class="card mb-4">
+                <div class="card-header">2. Compte comptable</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Numéro de compte *</label>
+                            <input type="text" class="form-control" name="numero" id="numero_compte" required placeholder="521..." maxlength="10">
+                            <small class="text-muted">Doit commencer par 5</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Intitulé *</label>
+                            <input type="text" class="form-control" name="intitule" id="intitule_compte" required placeholder="Ex: Banque CBAO Projet LED">
+                        </div>
+                    </div>
+                    <div class="alert alert-info small">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>Suggestion de numérotation SYSCOHADA :</strong><br>
+                        <span class="details-section banque active">521xxx - Comptes bancaires (ex: 521001 pour votre première banque)</span>
+                        <span class="details-section caisse">571xxx - Caisses (ex: 571001 pour la caisse principale)</span>
+                        <span class="details-section mobile_money">585xxx - Mobile Money (ex: 585001 pour Wave)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails selon le type -->
+            <div class="details-section banque active">
+                <div class="card mb-4">
+                    <div class="card-header">3. Informations bancaires</div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nom de la banque</label>
+                                <select class="form-select" name="nom_banque">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option value="CBAO">CBAO Groupe Attijariwafa Bank</option>
+                                    <option value="BICIS">BICIS (BNP Paribas)</option>
+                                    <option value="SGBS">Société Générale Sénégal</option>
+                                    <option value="Ecobank">Ecobank Sénégal</option>
+                                    <option value="BOA">Bank of Africa Sénégal</option>
+                                    <option value="UBA">United Bank for Africa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Numéro de compte</label>
+                                <input type="text" class="form-control" name="numero_compte" placeholder="Numéro de compte bancaire">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">IBAN</label>
+                                <input type="text" class="form-control" name="iban" placeholder="IBAN (optionnel)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Code SWIFT</label>
+                                <input type="text" class="form-control" name="code_swift" placeholder="Code SWIFT/BIC">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Titulaire du compte</label>
+                            <input type="text" class="form-control" name="titulaire" placeholder="Ex: CREATES GIE">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-section mobile_money">
+                <div class="card mb-4">
+                    <div class="card-header">3. Informations Mobile Money</div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Opérateur</label>
+                                <select class="form-select" name="operateur">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option value="Wave">Wave</option>
+                                    <option value="Orange Money">Orange Money</option>
+                                    <option value="Free Money">Free Money</option>
+                                    <option value="E-Money">E-Money (Expresso)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Numéro de téléphone</label>
+                                <input type="tel" class="form-control" name="numero_telephone" placeholder="+221 77 xxx xx xx">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nom du marchand (si compte pro)</label>
+                            <input type="text" class="form-control" name="nom_marchand" placeholder="Ex: CREATES GIE">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-section caisse">
+                <div class="card mb-4">
+                    <div class="card-header">3. Informations Caisse</div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Une caisse représente les espèces conservées sur place. Pas de détails supplémentaires requis.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations générales -->
+            <div class="card">
+                <div class="card-header">4. Informations générales</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Devise</label>
+                            <select class="form-select" name="devise_id">
+                                {% for devise in devises %}
+                                <option value="{{ devise.id }}" {% if devise.code == 'XOF' %}selected{% endif %}>
+                                    {{ devise.code }} - {{ devise.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Solde d'ouverture</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="solde_ouverture" value="0" step="0.01">
+                                <span class="input-group-text">FCFA</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Informations complémentaires..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Créer le compte
+                        </button>
+                        <a href="{{ url_for('liste_comptes_tresorerie') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Annuler
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectType(type) {
+    // Update hidden field
+    document.getElementById('type_tresorerie').value = type;
+
+    // Update visual selection
+    document.querySelectorAll('.type-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector('.type-option.' + type).classList.add('selected');
+
+    // Show/hide detail sections
+    document.querySelectorAll('.details-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.details-section.' + type).forEach(el => el.classList.add('active'));
+
+    // Update numero placeholder
+    const numeroInput = document.getElementById('numero_compte');
+    const intituleInput = document.getElementById('intitule_compte');
+    if (type === 'banque') {
+        numeroInput.placeholder = '521001';
+        intituleInput.placeholder = 'Ex: Banque CBAO Projet LED';
+    } else if (type === 'caisse') {
+        numeroInput.placeholder = '571001';
+        intituleInput.placeholder = 'Ex: Caisse principale';
+    } else if (type === 'mobile_money') {
+        numeroInput.placeholder = '585001';
+        intituleInput.placeholder = 'Ex: Wave CREATES';
+    }
+}
+</script>
+{% endblock %}

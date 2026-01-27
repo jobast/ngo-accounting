@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Comptes de Trésorerie - CREATES{% endblock %}
+
+{% block extra_css %}
+<style>
+    .compte-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+    .compte-card:hover {
+        transform: translateY(-2px);
+    }
+    .compte-header {
+        padding: 20px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .compte-body {
+        padding: 20px;
+    }
+    .compte-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    .compte-icon.banque { background: #e3f2fd; color: #1976d2; }
+    .compte-icon.caisse { background: #fff3e0; color: #f57c00; }
+    .compte-icon.mobile_money { background: #e8f5e9; color: #388e3c; }
+
+    .solde-display {
+        font-size: 24px;
+        font-weight: 700;
+    }
+    .solde-positive { color: #388e3c; }
+    .solde-negative { color: #d32f2f; }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #6c757d; font-size: 13px; }
+    .detail-value { font-weight: 500; }
+
+    .badge-type {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .badge-banque { background: #e3f2fd; color: #1976d2; }
+    .badge-caisse { background: #fff3e0; color: #f57c00; }
+    .badge-mobile_money { background: #e8f5e9; color: #388e3c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-bank me-2"></i>Comptes de Trésorerie</h2>
+        <p class="text-muted mb-0">Banques, Caisses et Mobile Money (Wave, Orange Money...)</p>
+    </div>
+    <a href="{{ url_for('nouveau_compte_tresorerie') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Nouveau compte
+    </a>
+</div>
+
+<!-- Résumé global -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h6 class="card-title opacity-75">Total Trésorerie</h6>
+                <h3 class="mb-0">{{ "{:,.0f}".format(comptes|sum(attribute='solde')).replace(",", " ") }} FCFA</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-muted small">Comptes Banque</div>
+                        <h4 class="mb-0">{{ comptes|selectattr('details')|selectattr('details.type_tresorerie', 'equalto', 'banque')|list|length }}</h4>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Caisses</div>
+                        <h4 class="mb-0">{{ comptes|selectattr('details')|selectattr('details.type_tresorerie', 'equalto', 'caisse')|list|length }}</h4>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Mobile Money</div>
+                        <h4 class="mb-0">{{ comptes|selectattr('details')|selectattr('details.type_tresorerie', 'equalto', 'mobile_money')|list|length }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des comptes -->
+<div class="row">
+    {% for item in comptes %}
+    <div class="col-md-6 col-lg-4">
+        <div class="compte-card">
+            <div class="compte-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex align-items-center">
+                        <div class="compte-icon {{ item.details.type_tresorerie if item.details else 'banque' }} me-3">
+                            {% if item.details and item.details.type_tresorerie == 'mobile_money' %}
+                            <i class="bi bi-phone"></i>
+                            {% elif item.details and item.details.type_tresorerie == 'caisse' %}
+                            <i class="bi bi-cash-stack"></i>
+                            {% else %}
+                            <i class="bi bi-bank"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h5 class="mb-1">{{ item.compte.numero }}</h5>
+                            <p class="mb-0 text-muted small">{{ item.compte.intitule[:30] }}{% if item.compte.intitule|length > 30 %}...{% endif %}</p>
+                        </div>
+                    </div>
+                    <span class="badge-type badge-{{ item.details.type_tresorerie if item.details else 'banque' }}">
+                        {% if item.details %}
+                            {% if item.details.type_tresorerie == 'mobile_money' %}Mobile Money
+                            {% elif item.details.type_tresorerie == 'caisse' %}Caisse
+                            {% else %}Banque{% endif %}
+                        {% else %}
+                            Non configuré
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="compte-body">
+                <div class="text-center mb-3">
+                    <div class="text-muted small">Solde actuel</div>
+                    <div class="solde-display {% if item.solde >= 0 %}solde-positive{% else %}solde-negative{% endif %}">
+                        {{ "{:,.0f}".format(item.solde).replace(",", " ") }} <small>FCFA</small>
+                    </div>
+                </div>
+
+                {% if item.details %}
+                <div class="detail-rows">
+                    {% if item.details.type_tresorerie == 'banque' %}
+                        {% if item.details.nom_banque %}
+                        <div class="detail-row">
+                            <span class="detail-label">Banque</span>
+                            <span class="detail-value">{{ item.details.nom_banque }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.details.numero_compte %}
+                        <div class="detail-row">
+                            <span class="detail-label">N° Compte</span>
+                            <span class="detail-value">****{{ item.details.numero_compte[-4:] }}</span>
+                        </div>
+                        {% endif %}
+                    {% elif item.details.type_tresorerie == 'mobile_money' %}
+                        {% if item.details.operateur %}
+                        <div class="detail-row">
+                            <span class="detail-label">Opérateur</span>
+                            <span class="detail-value">{{ item.details.operateur }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.details.numero_telephone %}
+                        <div class="detail-row">
+                            <span class="detail-label">Numéro</span>
+                            <span class="detail-value">{{ item.details.numero_telephone }}</span>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="alert alert-warning small mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Détails non configurés
+                </div>
+                {% endif %}
+
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{{ url_for('details_compte_tresorerie', id=item.compte.id) }}" class="btn btn-sm btn-outline-primary flex-grow-1">
+                        <i class="bi bi-pencil me-1"></i>Configurer
+                    </a>
+                    <a href="{{ url_for('petite_caisse') }}?compte_id={{ item.compte.id }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-list"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-bank fs-1"></i>
+            <p class="mt-3">Aucun compte de trésorerie</p>
+            <a href="{{ url_for('nouveau_compte_tresorerie') }}" class="btn btn-primary">
+                <i class="bi bi-plus me-2"></i>Créer un compte
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

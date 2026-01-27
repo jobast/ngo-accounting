@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{% if fournisseur %}Modifier{% else %}Nouveau{% endif %} Fournisseur - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_fournisseurs') }}">Fournisseurs</a></li>
+            <li class="breadcrumb-item active">{% if fournisseur %}{{ fournisseur.code }}{% else %}Nouveau{% endif %}</li>
+        </ol>
+    </nav>
+    <h2>
+        <i class="bi bi-{% if fournisseur %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+        {% if fournisseur %}Modifier {{ fournisseur.nom }}{% else %}Nouveau fournisseur{% endif %}
+    </h2>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card mb-4">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Nom du fournisseur *</label>
+                            <input type="text" class="form-control" name="nom" required
+                                   value="{{ fournisseur.nom if fournisseur else '' }}"
+                                   placeholder="Ex: Papeterie Diallo">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Catégorie</label>
+                            <select class="form-select" name="categorie">
+                                <option value="">-- Sélectionner --</option>
+                                <option value="fournitures" {% if fournisseur and fournisseur.categorie == 'fournitures' %}selected{% endif %}>Fournitures</option>
+                                <option value="services" {% if fournisseur and fournisseur.categorie == 'services' %}selected{% endif %}>Services</option>
+                                <option value="loyer" {% if fournisseur and fournisseur.categorie == 'loyer' %}selected{% endif %}>Loyer</option>
+                                <option value="telecom" {% if fournisseur and fournisseur.categorie == 'telecom' %}selected{% endif %}>Télécom/Internet</option>
+                                <option value="transport" {% if fournisseur and fournisseur.categorie == 'transport' %}selected{% endif %}>Transport</option>
+                                <option value="energie" {% if fournisseur and fournisseur.categorie == 'energie' %}selected{% endif %}>Énergie</option>
+                                <option value="restauration" {% if fournisseur and fournisseur.categorie == 'restauration' %}selected{% endif %}>Restauration</option>
+                                <option value="maintenance" {% if fournisseur and fournisseur.categorie == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                                <option value="autre" {% if fournisseur and fournisseur.categorie == 'autre' %}selected{% endif %}>Autre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Personne de contact</label>
+                            <input type="text" class="form-control" name="contact"
+                                   value="{{ fournisseur.contact if fournisseur else '' }}"
+                                   placeholder="Nom du contact">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">NINEA</label>
+                            <input type="text" class="form-control" name="ninea"
+                                   value="{{ fournisseur.ninea if fournisseur else '' }}"
+                                   placeholder="Numéro d'identification fiscale">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coordonnées -->
+            <div class="card mb-4">
+                <div class="card-header">Coordonnées</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Téléphone</label>
+                            <input type="tel" class="form-control" name="telephone"
+                                   value="{{ fournisseur.telephone if fournisseur else '' }}"
+                                   placeholder="+221 77 xxx xx xx">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email"
+                                   value="{{ fournisseur.email if fournisseur else '' }}"
+                                   placeholder="email@exemple.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Adresse</label>
+                        <input type="text" class="form-control" name="adresse"
+                               value="{{ fournisseur.adresse if fournisseur else '' }}"
+                               placeholder="Rue, quartier...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ville</label>
+                        <input type="text" class="form-control" name="ville"
+                               value="{{ fournisseur.ville if fournisseur else '' }}"
+                               placeholder="Dakar">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comptabilité -->
+            <div class="card mb-4">
+                <div class="card-header">Comptabilité (optionnel)</div>
+                <div class="card-body">
+                    <div class="alert alert-info small">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        Lier un compte comptable 401xxx permet de suivre automatiquement les paiements à ce fournisseur.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Compte fournisseur (401)</label>
+                        <select class="form-select" name="compte_comptable_id">
+                            <option value="">-- Aucun compte lié --</option>
+                            {% for compte in comptes_401 %}
+                            <option value="{{ compte.id }}"
+                                    {% if fournisseur and fournisseur.compte_comptable_id == compte.id %}selected{% endif %}>
+                                {{ compte.numero }} - {{ compte.intitule }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"
+                                  placeholder="Informations complémentaires...">{{ fournisseur.notes if fournisseur else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            {% if fournisseur %}Enregistrer{% else %}Créer{% endif %}
+                        </button>
+                        <a href="{{ url_for('liste_fournisseurs') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if fournisseur %}
+            <div class="card mt-3">
+                <div class="card-header">Informations</div>
+                <div class="card-body small">
+                    <p class="mb-1"><strong>Code :</strong> {{ fournisseur.code }}</p>
+                    <p class="mb-1"><strong>Créé le :</strong> {{ fournisseur.date_creation.strftime('%d/%m/%Y') if fournisseur.date_creation else '-' }}</p>
+                    <p class="mb-0"><strong>Par :</strong> {{ fournisseur.cree_par or '-' }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</form>
+{% endblock %}

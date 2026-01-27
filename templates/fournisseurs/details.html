@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}{{ fournisseur.nom }} - CREATES{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('liste_fournisseurs') }}">Fournisseurs</a></li>
+            <li class="breadcrumb-item active">{{ fournisseur.code }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <!-- Fiche fournisseur -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Fiche fournisseur</span>
+                <a href="{{ url_for('modifier_fournisseur', id=fournisseur.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <h4 class="mb-1">{{ fournisseur.nom }}</h4>
+                <p class="text-muted mb-3">{{ fournisseur.code }}</p>
+
+                {% if fournisseur.categorie %}
+                <span class="badge bg-secondary mb-3">{{ fournisseur.categorie|capitalize }}</span>
+                {% endif %}
+
+                <hr>
+
+                {% if fournisseur.contact %}
+                <p class="mb-2">
+                    <i class="bi bi-person text-muted me-2"></i>{{ fournisseur.contact }}
+                </p>
+                {% endif %}
+
+                {% if fournisseur.telephone %}
+                <p class="mb-2">
+                    <i class="bi bi-telephone text-muted me-2"></i>{{ fournisseur.telephone }}
+                </p>
+                {% endif %}
+
+                {% if fournisseur.email %}
+                <p class="mb-2">
+                    <i class="bi bi-envelope text-muted me-2"></i>
+                    <a href="mailto:{{ fournisseur.email }}">{{ fournisseur.email }}</a>
+                </p>
+                {% endif %}
+
+                {% if fournisseur.adresse or fournisseur.ville %}
+                <p class="mb-2">
+                    <i class="bi bi-geo-alt text-muted me-2"></i>
+                    {{ fournisseur.adresse }}{% if fournisseur.adresse and fournisseur.ville %}, {% endif %}{{ fournisseur.ville }}
+                </p>
+                {% endif %}
+
+                {% if fournisseur.ninea %}
+                <p class="mb-2">
+                    <i class="bi bi-file-text text-muted me-2"></i>NINEA: {{ fournisseur.ninea }}
+                </p>
+                {% endif %}
+
+                {% if fournisseur.compte_comptable %}
+                <hr>
+                <p class="mb-0 small">
+                    <strong>Compte lié :</strong><br>
+                    {{ fournisseur.compte_comptable.numero }} - {{ fournisseur.compte_comptable.intitule }}
+                </p>
+                {% endif %}
+
+                {% if fournisseur.notes %}
+                <hr>
+                <p class="mb-0 small text-muted">{{ fournisseur.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Résumé financier -->
+        <div class="card">
+            <div class="card-header">Résumé financier</div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-success mb-0">{{ "{:,.0f}".format(total_debit).replace(",", " ") }}</h5>
+                        <small class="text-muted">FCFA Débits</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-danger mb-0">{{ "{:,.0f}".format(total_credit).replace(",", " ") }}</h5>
+                        <small class="text-muted">FCFA Crédits</small>
+                    </div>
+                </div>
+                {% if not fournisseur.compte_comptable %}
+                <div class="alert alert-warning mt-3 mb-0 small">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Aucun compte comptable lié. L'historique ne peut pas être calculé automatiquement.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Historique des opérations -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>Historique des opérations
+            </div>
+            <div class="card-body">
+                {% if ecritures %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Pièce</th>
+                                <th>Libellé</th>
+                                <th class="text-end">Débit</th>
+                                <th class="text-end">Crédit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ligne in ecritures %}
+                            <tr>
+                                <td>{{ ligne.piece.date_piece.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <a href="{{ url_for('detail_ecriture', id=ligne.piece.id) }}">
+                                        {{ ligne.piece.numero }}
+                                    </a>
+                                </td>
+                                <td>{{ ligne.libelle or ligne.piece.libelle }}</td>
+                                <td class="text-end">
+                                    {% if ligne.debit and ligne.debit > 0 %}
+                                    {{ "{:,.0f}".format(ligne.debit).replace(",", " ") }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if ligne.credit and ligne.credit > 0 %}
+                                    {{ "{:,.0f}".format(ligne.credit).replace(",", " ") }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="3">Total</th>
+                                <th class="text-end">{{ "{:,.0f}".format(total_debit).replace(",", " ") }}</th>
+                                <th class="text-end">{{ "{:,.0f}".format(total_credit).replace(",", " ") }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1"></i>
+                    <p class="mt-2">Aucune opération enregistrée</p>
+                    {% if not fournisseur.compte_comptable %}
+                    <small>Liez un compte comptable pour suivre l'historique automatiquement</small>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

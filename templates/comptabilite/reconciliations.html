@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Réconciliations Bancaires - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bank"></i> Réconciliations Bancaires</h2>
+    <a href="{{ url_for('nouvelle_reconciliation') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nouvelle réconciliation
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if reconciliations %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Compte</th>
+                        <th>Période</th>
+                        <th class="text-end">Solde Relevé</th>
+                        <th class="text-end">Solde Comptable</th>
+                        <th class="text-end">Écart</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reconciliations %}
+                    <tr>
+                        <td>{{ r.date_reconciliation.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <strong>{{ r.compte.numero }}</strong>
+                            <br><small class="text-muted">{{ r.compte.intitule }}</small>
+                        </td>
+                        <td>
+                            {{ r.periode_debut.strftime('%d/%m/%Y') }} - {{ r.periode_fin.strftime('%d/%m/%Y') }}
+                        </td>
+                        <td class="text-end">{{ "{:,.0f}".format(r.solde_releve) }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(r.solde_comptable) }}</td>
+                        <td class="text-end {% if r.ecart != 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ "{:,.0f}".format(r.ecart) }}
+                        </td>
+                        <td>
+                            {% if r.statut == 'validee' %}
+                            <span class="badge bg-success">Validée</span>
+                            {% else %}
+                            <span class="badge bg-warning">En cours</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('detail_reconciliation', id=r.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if r.statut == 'validee' %}
+                            <a href="{{ url_for('export_reconciliation_pdf', id=r.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-file-pdf"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-bank display-4 text-muted"></i>
+            <p class="text-muted mt-3">Aucune réconciliation bancaire enregistrée.</p>
+            <a href="{{ url_for('nouvelle_reconciliation') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Créer une réconciliation
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
