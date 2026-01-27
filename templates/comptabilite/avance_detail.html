@@ -13,6 +13,7 @@
         {% endif %}
         {% if avance.statut not in ['soldee', 'deduite'] and current_user.role == 'directeur' %}
         <form method="POST" action="{{ url_for('deduire_avance', id=avance.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-warning" onclick="return confirm('Confirmer la déduction du salaire?')">
                 <i class="bi bi-exclamation-triangle"></i> Marquer comme déduite
             </button>

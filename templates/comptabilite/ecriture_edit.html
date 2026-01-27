@@ -20,6 +20,7 @@
 </div>
 
 <form method="POST" id="ecritureForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
         <div class="col-md-8">
             <!-- En-tete de la piece -->

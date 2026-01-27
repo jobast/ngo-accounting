@@ -173,6 +173,7 @@
                                     {% if t.statut != 'recu' %}
                                     <form method="POST" action="{{ url_for('supprimer_tranche', id=t.id) }}"
                                           class="d-inline" onsubmit="return confirm('Supprimer cette tranche?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
                                             <i class="bi bi-trash"></i>
                                         </button>
@@ -292,6 +293,7 @@
                 {% if not financement.tranches or not any(t.statut == 'recu' for t in financement.tranches) %}
                 <form method="POST" action="{{ url_for('supprimer_financement', id=financement.id) }}"
                       onsubmit="return confirm('Supprimer ce financement?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline-danger w-100">
                         <i class="bi bi-trash me-2"></i>Supprimer
                     </button>
@@ -311,6 +313,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('ajouter_tranche', id=financement.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="montant_prevu" class="form-label">Montant prevu <span class="text-danger">*</span></label>
@@ -340,6 +343,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="recevoirTrancheForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <p>Tranche <strong id="modal_tranche_numero"></strong></p>
                     <div class="mb-3">

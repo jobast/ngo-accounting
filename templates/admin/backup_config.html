@@ -25,6 +25,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('config_backup') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row mb-3">
                         <div class="col-md-8">
                             <label for="smtp_server" class="form-label">Serveur SMTP <span class="text-danger">*</span></label>
@@ -198,6 +199,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                 <form method="POST" action="{{ url_for('test_email_backup') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-info">
                         <i class="bi bi-send me-2"></i>Envoyer le test
                     </button>

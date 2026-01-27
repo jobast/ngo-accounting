@@ -178,12 +178,14 @@
 
                     {% if bon.statut == 'emis' and current_user.role in ['comptable', 'directeur'] %}
                     <form method="POST" action="{{ url_for('livrer_bon_commande', id=bon.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="statut_livraison" value="livre_partiel">
                         <button type="submit" class="btn btn-warning w-100">
                             <i class="bi bi-truck me-2"></i>Marquer livré partiellement
                         </button>
                     </form>
                     <form method="POST" action="{{ url_for('livrer_bon_commande', id=bon.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="statut_livraison" value="livre">
                         <button type="submit" class="btn btn-success w-100">
                             <i class="bi bi-check-circle me-2"></i>Marquer livré

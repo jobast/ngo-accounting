@@ -22,6 +22,7 @@
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         Répartissez le budget de cette ligne sur les années du projet.

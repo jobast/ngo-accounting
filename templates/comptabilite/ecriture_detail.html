@@ -151,6 +151,7 @@
                             </a>
                             {% if current_user.role in ['comptable', 'directeur'] %}
                             <form action="{{ url_for('supprimer_piece_justificative', id=pj.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger"
                                         onclick="return confirm('Supprimer cette pièce justificative?')">
                                     <i class="bi bi-trash"></i>
@@ -185,6 +186,7 @@
 
                     {% if current_user.role in ['comptable', 'directeur'] %}
                     <form action="{{ url_for('dupliquer_ecriture', id=piece.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline-secondary w-100">
                             <i class="bi bi-copy me-2"></i>Dupliquer
                         </button>
@@ -194,12 +196,14 @@
                     {% if current_user.role == 'directeur' %}
                         {% if not piece.valide %}
                         <form action="{{ url_for('valider_ecriture', id=piece.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="bi bi-check-circle me-2"></i>Valider l'ecriture
                             </button>
                         </form>
                         {% else %}
                         <form action="{{ url_for('invalider_ecriture', id=piece.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-warning w-100"
                                     onclick="return confirm('Etes-vous sur de vouloir invalider cette ecriture?')">
                                 <i class="bi bi-x-circle me-2"></i>Invalider
@@ -231,6 +235,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('upload_piece_justificative', id=piece.id) }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Ajouter une pièce justificative</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

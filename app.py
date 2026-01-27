@@ -6,6 +6,7 @@ Application de comptabilité pour ONG - Conforme SYSCOHADA
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
@@ -67,6 +68,9 @@ def inject_org_info():
     return {'org': ORG_INFO}
 
 db = SQLAlchemy(app)
+
+# SECURITY: CSRF protection
+csrf = CSRFProtect(app)
 
 # SECURITY: Enable SQLite foreign key enforcement
 from sqlalchemy import event
@@ -2612,11 +2616,36 @@ def nouvelle_ecriture():
 
         # MODE EXPERT - Écriture manuelle classique
         else:
+            # SECURITY: Validate exercise is open and date is within bounds
+            try:
+                date_piece = datetime.strptime(request.form['date_piece'], '%Y-%m-%d').date()
+            except ValueError:
+                flash('Format de date invalide.', 'danger')
+                return redirect(url_for('nouvelle_ecriture'))
+
+            exercice_id = request.form.get('exercice_id')
+            if not exercice_id:
+                flash('Exercice comptable non spécifié.', 'danger')
+                return redirect(url_for('nouvelle_ecriture'))
+
+            exercice = ExerciceComptable.query.get(exercice_id)
+            if not exercice:
+                flash('Exercice comptable introuvable.', 'danger')
+                return redirect(url_for('nouvelle_ecriture'))
+
+            if exercice.cloture:
+                flash('Impossible de créer une écriture sur un exercice clôturé.', 'danger')
+                return redirect(url_for('nouvelle_ecriture'))
+
+            if date_piece < exercice.date_debut or date_piece > exercice.date_fin:
+                flash(f'La date doit être comprise entre {exercice.date_debut.strftime("%d/%m/%Y")} et {exercice.date_fin.strftime("%d/%m/%Y")}.', 'danger')
+                return redirect(url_for('nouvelle_ecriture'))
+
             piece = PieceComptable(
                 numero=numero,
-                date_piece=datetime.strptime(request.form['date_piece'], '%Y-%m-%d').date(),
+                date_piece=date_piece,
                 journal_id=request.form['journal_id'],
-                exercice_id=request.form['exercice_id'],
+                exercice_id=exercice.id,
                 libelle=request.form['libelle'],
                 reference=request.form.get('reference'),
                 devise_id=request.form.get('devise_id') or None,
@@ -3001,19 +3030,23 @@ def upload_piece_justificative(id):
 @app.route('/uploads/<path:filename>')
 @login_required
 def uploaded_file(filename):
-    """Servir les fichiers uploadés - SECURITY: Path traversal protection"""
-    # Sanitize filename to prevent path traversal
-    safe_filename = secure_filename(os.path.basename(filename))
-    if not safe_filename:
+    """Servir les fichiers uploadés - SECURITY: Path traversal + access control"""
+    # SECURITY: Normalize path and prevent traversal attacks
+    # Split path into components and filter out any ".." or empty parts
+    path_parts = [p for p in filename.replace('\\', '/').split('/') if p and p != '..']
+    if not path_parts:
         flash('Fichier non trouvé.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Build safe path and verify it's within UPLOAD_FOLDER
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+    # Reconstruct the clean path
+    clean_filename = os.path.join(*path_parts)
+
+    # Build full path and verify it's within UPLOAD_FOLDER
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], clean_filename)
     real_path = os.path.realpath(filepath)
     upload_folder = os.path.realpath(app.config['UPLOAD_FOLDER'])
 
-    if not real_path.startswith(upload_folder):
+    if not real_path.startswith(upload_folder + os.sep):
         flash('Accès non autorisé.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -3021,7 +3054,35 @@ def uploaded_file(filename):
         flash('Fichier non trouvé.', 'danger')
         return redirect(url_for('dashboard'))
 
-    return send_file(real_path)
+    # SECURITY: Verify user has access to this file (IDOR protection)
+    # Privileged roles can access all files
+    if current_user.role in ['comptable', 'directeur', 'auditeur']:
+        return send_file(real_path)
+
+    # For regular users, verify they own the associated record
+    # Check if this is a PieceJustificative they have access to
+    pj = PieceJustificative.query.filter_by(fichier_path=clean_filename).first()
+    if pj:
+        # Regular users shouldn't access accounting documents
+        flash('Accès non autorisé à ce document.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Check if this is a NoteFrais attachment they own
+    note = NoteFrais.query.filter_by(justificatif=clean_filename).first()
+    if note and note.employe_id == current_user.id:
+        return send_file(real_path)
+
+    # No matching record or no access
+    flash('Accès non autorisé à ce document.', 'danger')
+    return redirect(url_for('dashboard'))
+
+
+# Alias route for templates using serve_upload
+@app.route('/serve-upload/<path:filename>')
+@login_required
+def serve_upload(filename):
+    """Alias for uploaded_file - used by notes_frais templates"""
+    return uploaded_file(filename)
 
 
 @app.route('/pieces-justificatives/<int:id>/supprimer', methods=['POST'])
@@ -3911,10 +3972,14 @@ def nouvelle_note_frais():
         if 'justificatif' in request.files:
             fichier = request.files['justificatif']
             if fichier and fichier.filename:
+                # SECURITY: Validate file extension
+                if not allowed_file(fichier.filename):
+                    flash('Type de fichier non autorisé. Formats acceptés: PDF, PNG, JPG, GIF', 'danger')
+                    return redirect(url_for('nouvelle_note_frais'))
                 from werkzeug.utils import secure_filename
                 filename = secure_filename(fichier.filename)
                 # Créer un nom unique
-                ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+                ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
                 unique_filename = f"nf_{numero}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'notes_frais', unique_filename)
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -3994,9 +4059,13 @@ def modifier_note_frais(id):
         if 'justificatif' in request.files:
             fichier = request.files['justificatif']
             if fichier and fichier.filename:
+                # SECURITY: Validate file extension
+                if not allowed_file(fichier.filename):
+                    flash('Type de fichier non autorisé. Formats acceptés: PDF, PNG, JPG, GIF', 'danger')
+                    return redirect(url_for('modifier_note_frais', id=id))
                 from werkzeug.utils import secure_filename
                 filename = secure_filename(fichier.filename)
-                ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+                ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
                 unique_filename = f"nf_{note.numero}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'notes_frais', unique_filename)
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -7004,21 +7073,44 @@ def init_db():
     ]
     db.session.add_all(categories)
 
-    # Créer un utilisateur administrateur par défaut
-    admin = Utilisateur(
-        email='admin@creates.sn',
-        nom='Administrateur',
-        prenom='CREATES',
-        password_hash=generate_password_hash('admin123'),  # Mot de passe à changer!
-        role='directeur',
-        actif=True,
-        created_by='system'
-    )
-    db.session.add(admin)
+    # SECURITY: Create admin user only if explicitly enabled or in development
+    create_admin = os.environ.get('CREATE_DEFAULT_ADMIN', 'false').lower() == 'true'
+    is_development = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 
-    db.session.commit()
-    print("Base de données initialisée avec succès!")
-    print("Utilisateur admin créé: admin@creates.sn / admin123 (à changer!)")
+    if create_admin or is_development:
+        # Use environment variables for credentials, with insecure defaults for dev only
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@creates.sn')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+
+        if not admin_password:
+            if is_development:
+                admin_password = 'admin123'
+                print("WARNING: Using default admin password. Set ADMIN_PASSWORD env var in production!")
+            else:
+                print("ERROR: ADMIN_PASSWORD environment variable not set. Skipping admin creation.")
+                db.session.commit()
+                print("Base de données initialisée avec succès (sans utilisateur admin)!")
+                return
+
+        admin = Utilisateur(
+            email=admin_email,
+            nom='Administrateur',
+            prenom='CREATES',
+            password_hash=generate_password_hash(admin_password),
+            role='directeur',
+            actif=True,
+            created_by='system'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("Base de données initialisée avec succès!")
+        print(f"Utilisateur admin créé: {admin_email}")
+        if admin_password == 'admin123':
+            print("IMPORTANT: Changez le mot de passe par défaut immédiatement!")
+    else:
+        db.session.commit()
+        print("Base de données initialisée avec succès!")
+        print("Note: Aucun utilisateur admin créé. Définir CREATE_DEFAULT_ADMIN=true pour en créer un.")
 
 
 # =============================================================================

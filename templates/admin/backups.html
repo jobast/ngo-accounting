@@ -71,6 +71,7 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <form method="POST" action="{{ url_for('creer_backup') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-primary w-100 py-3">
                         <i class="bi bi-download fs-4 d-block mb-2"></i>
                         Creer une sauvegarde
@@ -139,6 +140,7 @@
                                 {% if email_config and email_config.actif %}
                                 <form method="POST" action="{{ url_for('envoyer_backup_par_email', filename=backup.filename) }}"
                                       class="d-inline" onsubmit="return confirm('Envoyer ce backup par email a {{ email_config.email_destinataire }} ?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline-info" title="Envoyer par email">
                                         <i class="bi bi-envelope"></i>
                                     </button>
@@ -154,6 +156,7 @@
                                 </button>
                                 <form method="POST" action="{{ url_for('supprimer_backup', filename=backup.filename) }}"
                                       class="d-inline" onsubmit="return confirm('Supprimer cette sauvegarde ?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline-danger" title="Supprimer">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -170,6 +173,7 @@
             <i class="bi bi-archive display-4 text-muted"></i>
             <p class="text-muted mt-3">Aucune sauvegarde disponible</p>
             <form method="POST" action="{{ url_for('creer_backup') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-download me-2"></i>Creer la premiere sauvegarde
                 </button>
@@ -221,6 +225,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="restoreForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-octagon me-2"></i>

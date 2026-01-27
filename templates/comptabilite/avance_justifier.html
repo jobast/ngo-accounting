@@ -15,6 +15,7 @@
         <div class="card">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label">Bénéficiaire</label>
                         <input type="text" class="form-control" value="{{ avance.beneficiaire }}" disabled>

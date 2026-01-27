@@ -98,6 +98,7 @@
         <span>Écritures à rapprocher</span>
         {% if reconciliation.statut != 'validee' and current_user.role == 'directeur' %}
         <form method="POST" action="{{ url_for('valider_reconciliation', id=reconciliation.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-success btn-sm">
                 <i class="bi bi-check-circle"></i> Valider la réconciliation
             </button>
@@ -106,6 +107,7 @@
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('pointer_lignes_reconciliation', id=reconciliation.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>

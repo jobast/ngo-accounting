@@ -66,6 +66,7 @@
         {% endwith %}
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-4">
                 <label for="email" class="form-label">Adresse email</label>
                 <div class="input-group">

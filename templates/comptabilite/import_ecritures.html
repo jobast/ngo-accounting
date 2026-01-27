@@ -16,6 +16,7 @@
             <div class="card-header">Upload du fichier</div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('upload_import_ecritures') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="fichier" class="form-label">Fichier Excel (.xlsx)</label>
                         <input type="file" class="form-control" id="fichier" name="fichier" accept=".xlsx" required>

@@ -189,6 +189,7 @@
                 <div class="d-grid gap-2">
                     {% if demande.peut_soumettre and demande.demandeur_id == current_user.id %}
                     <form method="POST" action="{{ url_for('soumettre_demande_achat', id=demande.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-success w-100">
                             <i class="bi bi-send me-2"></i>Soumettre pour approbation
                         </button>
@@ -203,6 +204,7 @@
                         </div>
                         {% else %}
                         <form method="POST" action="{{ url_for('approuver_demande_achat', id=demande.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="bi bi-check-circle me-2"></i>Approuver
                             </button>
@@ -275,6 +277,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('rejeter_demande_achat', id=demande.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Rejeter la demande d'achat</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -304,6 +307,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('generer_bon_commande', id=demande.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Générer un bon de commande</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

@@ -15,6 +15,7 @@
         <div>
             {% if modele.actif %}
             <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-success">
                     <i class="bi bi-play-fill me-1"></i>Generer ecriture
                 </button>
@@ -160,6 +161,7 @@
                 <div class="d-grid gap-2">
                     {% if modele.actif %}
                     <form method="POST" action="{{ url_for('generer_ecriture_modele', id=modele.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-success w-100">
                             <i class="bi bi-play-fill me-1"></i>Generer une ecriture
                         </button>
@@ -173,6 +175,7 @@
                     {% if current_user.role == 'directeur' %}
                     <form method="POST" action="{{ url_for('supprimer_modele_ecriture', id=modele.id) }}"
                           onsubmit="return confirm('Supprimer ce modele ?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline-danger w-100">
                             <i class="bi bi-trash me-1"></i>Supprimer
                         </button>

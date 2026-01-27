@@ -221,6 +221,7 @@
 
 <!-- Formulaire DÉPENSE -->
 <form method="POST" id="formDepense" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="depense">
     <div class="row">
         <div class="col-md-8">
@@ -375,6 +376,7 @@
 
 <!-- Formulaire RECETTE -->
 <form method="POST" id="formRecette" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="recette">
     <div class="row">
         <div class="col-md-8">
@@ -478,6 +480,7 @@
 
 <!-- Formulaire VIREMENT INTERNE -->
 <form method="POST" id="formVirement" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="virement">
     <div class="row">
         <div class="col-md-8">
@@ -565,6 +568,7 @@
 
 <!-- Formulaire AVANCE -->
 <form method="POST" id="formAvance" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="avance">
     <div class="row">
         <div class="col-md-8">
@@ -662,6 +666,7 @@
 
 <!-- Formulaire SALAIRES -->
 <form method="POST" id="formSalaires" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="salaires">
     <div class="row">
         <div class="col-md-8">
@@ -844,6 +849,7 @@
 
 <!-- Formulaire MODE EXPERT (écriture manuelle) -->
 <form method="POST" id="formExpert" class="operation-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="operation_type" value="expert">
     <div class="row">
         <div class="col-md-8">
