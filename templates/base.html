@@ -80,9 +80,17 @@
         }
         .sidebar .nav-section-title {
             font-size: 0.7rem;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 8px 20px 4px;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.9);
+            padding: 12px 20px 6px;
+            margin-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            display: block;
+        }
+        .sidebar .nav-section-title:first-of-type {
+            border-top: none;
             margin-top: 5px;
         }
         .main-content {
@@ -195,10 +203,16 @@
         </div>
         {% endif %}
         <ul class="nav flex-column">
+            <!-- ACCUEIL -->
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
                     <i class="bi bi-speedometer2"></i> Tableau de bord
                 </a>
+            </li>
+
+            <!-- RÉFÉRENTIEL -->
+            <li class="nav-item">
+                <span class="nav-section-title">RÉFÉRENTIEL</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'bailleur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_bailleurs') }}">
@@ -211,7 +225,19 @@
                 </a>
             </li>
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">REVENUS</small>
+                <a class="nav-link {% if 'fournisseur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_fournisseurs') }}">
+                    <i class="bi bi-building"></i> Fournisseurs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'plan_comptable' %}active{% endif %}" href="{{ url_for('plan_comptable') }}">
+                    <i class="bi bi-list-ul"></i> Plan comptable
+                </a>
+            </li>
+
+            <!-- REVENUS -->
+            <li class="nav-item">
+                <span class="nav-section-title">REVENUS</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'financement' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_financements') }}">
@@ -220,24 +246,13 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'tableau_bord_revenus' %}active{% endif %}" href="{{ url_for('tableau_bord_revenus') }}">
-                    <i class="bi bi-graph-up"></i> Tableau de bord
+                    <i class="bi bi-graph-up"></i> Suivi revenus
                 </a>
             </li>
+
+            <!-- DÉPENSES -->
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">ACHATS</small>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'fournisseur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_fournisseurs') }}">
-                    <i class="bi bi-building"></i> Fournisseurs
-                </a>
-            </li>
-            <li class="nav-item">
-                <small class="nav-section-title text-white-50">COMPTABILITÉ</small>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'plan_comptable' %}active{% endif %}" href="{{ url_for('plan_comptable') }}">
-                    <i class="bi bi-list-ul"></i> Plan comptable
-                </a>
+                <span class="nav-section-title">DÉPENSES</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'ecriture' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_ecritures') }}">
@@ -250,37 +265,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">TRÉSORERIE</small>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'compte' in request.endpoint|default('') and 'tresorerie' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_comptes_tresorerie') }}">
-                    <i class="bi bi-credit-card"></i> Comptes & Banques
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'reconciliation' in request.endpoint|default('') and 'analytique' not in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_reconciliations') }}">
-                    <i class="bi bi-bank"></i> Réconciliation bancaire
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'avance' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_avances') }}">
-                    <i class="bi bi-cash-stack"></i> Avances
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'petite_caisse' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('petite_caisse') }}">
-                    <i class="bi bi-wallet2"></i> Petite caisse
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if 'immobilisation' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_immobilisations') }}">
-                    <i class="bi bi-building"></i> Immobilisations
-                </a>
-            </li>
-            <li class="nav-item">
-                <small class="nav-section-title text-white-50">ACHATS</small>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {% if 'demande' in request.endpoint|default('') and 'achat' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_demandes_achat') }}">
                     <i class="bi bi-cart-check"></i> Demandes d'achat
                 </a>
@@ -290,12 +274,49 @@
                     <i class="bi bi-file-text"></i> Bons de commande
                 </a>
             </li>
+
+            <!-- TRÉSORERIE -->
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">RAPPORTS</small>
+                <span class="nav-section-title">TRÉSORERIE</span>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'compte' in request.endpoint|default('') and 'tresorerie' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_comptes_tresorerie') }}">
+                    <i class="bi bi-credit-card"></i> Comptes & Banques
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'reconciliation' in request.endpoint|default('') and 'analytique' not in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_reconciliations') }}">
+                    <i class="bi bi-bank"></i> Rapprochement bancaire
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'avance' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_avances') }}">
+                    <i class="bi bi-cash"></i> Avances
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'petite_caisse' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('petite_caisse') }}">
+                    <i class="bi bi-wallet2"></i> Petite caisse
+                </a>
+            </li>
+
+            <!-- PATRIMOINE -->
+            <li class="nav-item">
+                <span class="nav-section-title">PATRIMOINE</span>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'immobilisation' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_immobilisations') }}">
+                    <i class="bi bi-buildings"></i> Immobilisations
+                </a>
+            </li>
+
+            <!-- RAPPORTS -->
+            <li class="nav-item">
+                <span class="nav-section-title">RAPPORTS</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'rapports' %}active{% endif %}" href="{{ url_for('rapports') }}">
-                    <i class="bi bi-file-earmark-bar-graph"></i> Rapports
+                    <i class="bi bi-file-earmark-bar-graph"></i> Rapports bailleurs
                 </a>
             </li>
             <li class="nav-item">
@@ -310,12 +331,14 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'reconciliation_analytique' %}active{% endif %}" href="{{ url_for('reconciliation_analytique') }}">
-                    <i class="bi bi-arrow-left-right"></i> Réconciliation
+                    <i class="bi bi-arrow-left-right"></i> Réconciliation analytique
                 </a>
             </li>
+
+            <!-- OUTILS (comptable/directeur) -->
             {% if current_user.is_authenticated and current_user.role in ['comptable', 'directeur'] %}
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">OUTILS</small>
+                <span class="nav-section-title">OUTILS</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'import' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('import_ecritures_page') }}">
@@ -333,9 +356,11 @@
                 </a>
             </li>
             {% endif %}
+
+            <!-- ADMINISTRATION (directeur) -->
             {% if current_user.is_authenticated and current_user.role == 'directeur' %}
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">ADMINISTRATION</small>
+                <span class="nav-section-title">ADMINISTRATION</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'utilisateur' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_utilisateurs') }}">
@@ -349,7 +374,7 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if 'journal' in request.endpoint|default('') and 'audit' not in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('liste_journaux') }}">
-                    <i class="bi bi-journal-bookmark"></i> Journaux
+                    <i class="bi bi-journals"></i> Journaux
                 </a>
             </li>
             <li class="nav-item">
@@ -357,40 +382,38 @@
                     <i class="bi bi-shield-check"></i> Sauvegardes
                 </a>
             </li>
-            {% endif %}
-            {% if current_user.is_authenticated and current_user.role in ['directeur', 'auditeur'] %}
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'audit_trail' %}active{% endif %}" href="{{ url_for('audit_trail') }}">
                     <i class="bi bi-clock-history"></i> Journal d'audit
                 </a>
             </li>
             {% endif %}
+
+            <!-- Audit (auditeur uniquement, si pas directeur) -->
+            {% if current_user.is_authenticated and current_user.role == 'auditeur' %}
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'audit_trail' %}active{% endif %}" href="{{ url_for('audit_trail') }}">
+                    <i class="bi bi-clock-history"></i> Journal d'audit
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- AIDE -->
             {% if current_user.is_authenticated %}
             <li class="nav-item">
-                <small class="nav-section-title text-white-50">AIDE</small>
+                <span class="nav-section-title">AIDE</span>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'aide_index' %}active{% endif %}" href="{{ url_for('aide_index') }}">
                     <i class="bi bi-question-circle"></i> Centre d'aide
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'guide_utilisateur' %}active{% endif %}" href="{{ url_for('guide_utilisateur') }}">
-                    <i class="bi bi-book"></i> Guide utilisateur
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'manuel_gestion' %}active{% endif %}" href="{{ url_for('manuel_gestion') }}">
-                    <i class="bi bi-file-earmark-text"></i> Manuel de gestion
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'faq' %}active{% endif %}" href="{{ url_for('faq') }}">
-                    <i class="bi bi-chat-left-dots"></i> FAQ
-                </a>
-            </li>
-            <li class="nav-item">
-                <small class="nav-section-title text-white-50">{{ current_user.email }}</small>
+
+            <!-- USER -->
+            <li class="nav-item mt-auto pt-3" style="border-top: 1px solid rgba(255,255,255,0.15);">
+                <div class="px-3 py-2 text-white-50 small">
+                    <i class="bi bi-person-circle me-1"></i>{{ current_user.email }}
+                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('logout') }}">
