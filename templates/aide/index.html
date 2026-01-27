@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Centre d'aide - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-question-circle me-2"></i>Centre d'aide</h2>
+</div>
+
+<p class="lead mb-4">Bienvenue dans le centre d'aide de l'application comptable CREATES. Trouvez ici toutes les ressources pour utiliser efficacement le système.</p>
+
+<div class="row g-4">
+    <!-- Guide utilisateur -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-book text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="card-title">Guide utilisateur</h5>
+                <p class="card-text">Apprenez a utiliser l'application pas a pas. Tutoriels pour chaque module : comptabilite, projets, rapports.</p>
+                <a href="{{ url_for('guide_utilisateur') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-right me-1"></i>Consulter le guide
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manuel de gestion -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="card-title">Manuel de gestion CREATES</h5>
+                <p class="card-text">Procedures de gestion administrative et financiere du GIE CREATES. Regles et politiques internes.</p>
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('manuel_gestion') }}" class="btn btn-primary">
+                        <i class="bi bi-eye me-1"></i>Lire en ligne
+                    </a>
+                    <a href="{{ url_for('telecharger_manuel') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-download me-1"></i>PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-chat-left-dots text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="card-title">Questions frequentes</h5>
+                <p class="card-text">Reponses aux questions les plus courantes sur l'utilisation de l'application et les procedures comptables.</p>
+                <a href="{{ url_for('faq') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-right me-1"></i>Voir la FAQ
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section Contacts -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-telephone me-2"></i>Besoin d'aide supplementaire ?</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Support technique</h6>
+                <p class="mb-1"><i class="bi bi-envelope me-2"></i>support@creates.ngo</p>
+                <p><i class="bi bi-telephone me-2"></i>+221 XX XXX XX XX</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Questions comptables</h6>
+                <p class="mb-1"><i class="bi bi-person me-2"></i>Contactez le comptable ou le directeur</p>
+                <p><i class="bi bi-building me-2"></i>Bureau CREATES, Ngaparou</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

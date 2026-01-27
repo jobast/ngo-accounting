@@ -326,6 +326,29 @@
             {% endif %}
             {% if current_user.is_authenticated %}
             <li class="nav-item">
+                <small class="nav-section-title text-white-50">AIDE</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'aide_index' %}active{% endif %}" href="{{ url_for('aide_index') }}">
+                    <i class="bi bi-question-circle"></i> Centre d'aide
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'guide_utilisateur' %}active{% endif %}" href="{{ url_for('guide_utilisateur') }}">
+                    <i class="bi bi-book"></i> Guide utilisateur
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'manuel_gestion' %}active{% endif %}" href="{{ url_for('manuel_gestion') }}">
+                    <i class="bi bi-file-earmark-text"></i> Manuel de gestion
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'faq' %}active{% endif %}" href="{{ url_for('faq') }}">
+                    <i class="bi bi-chat-left-dots"></i> FAQ
+                </a>
+            </li>
+            <li class="nav-item">
                 <small class="nav-section-title text-white-50">{{ current_user.email }}</small>
             </li>
             <li class="nav-item">

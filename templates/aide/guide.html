@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Guide utilisateur - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-book me-2"></i>Guide utilisateur</h2>
+    <a href="{{ url_for('aide_index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour a l'aide
+    </a>
+</div>
+
+<p class="lead mb-4">Ce guide vous accompagne dans l'utilisation quotidienne de l'application comptable CREATES.</p>
+
+<!-- Accordeon des sections -->
+<div class="accordion" id="guideAccordion">
+
+    <!-- Section 1: Premiers pas -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#section1">
+                <i class="bi bi-1-circle me-2"></i>Premiers pas
+            </button>
+        </h2>
+        <div id="section1" class="accordion-collapse collapse show" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Connexion</h5>
+                <ol>
+                    <li>Accedez a l'application via votre navigateur</li>
+                    <li>Entrez votre adresse email et mot de passe</li>
+                    <li>Cliquez sur "Se connecter"</li>
+                </ol>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Si vous avez oublie votre mot de passe, contactez l'administrateur (directeur).
+                </div>
+
+                <h5 class="mt-4">Navigation</h5>
+                <p>L'application est organisee autour d'une barre laterale (sidebar) a gauche :</p>
+                <ul>
+                    <li><strong>Tableau de bord</strong> : Vue d'ensemble de l'activite</li>
+                    <li><strong>Bailleurs / Projets</strong> : Gestion des financements</li>
+                    <li><strong>Comptabilite</strong> : Plan comptable, ecritures</li>
+                    <li><strong>Tresorerie</strong> : Banques, caisse, reconciliation</li>
+                    <li><strong>Rapports</strong> : Etats financiers et rapports bailleurs</li>
+                    <li><strong>Aide</strong> : Documentation et FAQ</li>
+                </ul>
+
+                <h5 class="mt-4">Tableau de bord</h5>
+                <p>Le tableau de bord affiche :</p>
+                <ul>
+                    <li>Solde total de tresorerie</li>
+                    <li>Budget total des projets actifs</li>
+                    <li>Nombre d'ecritures en attente de validation</li>
+                    <li>Graphiques d'evolution</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Comptabilite -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#section2">
+                <i class="bi bi-2-circle me-2"></i>Comptabilite
+            </button>
+        </h2>
+        <div id="section2" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Plan comptable</h5>
+                <p>Le plan comptable suit les normes SYSCOHADA :</p>
+                <ul>
+                    <li><strong>Classe 1</strong> : Capitaux propres</li>
+                    <li><strong>Classe 2</strong> : Immobilisations</li>
+                    <li><strong>Classe 3</strong> : Stocks</li>
+                    <li><strong>Classe 4</strong> : Tiers (fournisseurs, clients, personnel)</li>
+                    <li><strong>Classe 5</strong> : Tresorerie (banque, caisse)</li>
+                    <li><strong>Classe 6</strong> : Charges</li>
+                    <li><strong>Classe 7</strong> : Produits</li>
+                </ul>
+
+                <h5 class="mt-4">Saisir une ecriture comptable</h5>
+                <ol>
+                    <li>Allez dans <strong>Comptabilite > Ecritures</strong></li>
+                    <li>Cliquez sur <strong>"Nouvelle ecriture"</strong></li>
+                    <li>Selectionnez le journal (Achats, Banque, Caisse, OD)</li>
+                    <li>Renseignez la date et le libelle</li>
+                    <li>Ajoutez les lignes debit et credit</li>
+                    <li>Verifiez que <strong>Total Debit = Total Credit</strong></li>
+                    <li>Selectionnez le ou les projet(s) concernes</li>
+                    <li>Joignez les pieces justificatives (factures, recus)</li>
+                    <li>Enregistrez</li>
+                </ol>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Important :</strong> Une ecriture doit toujours etre equilibree (Debit = Credit).
+                </div>
+
+                <h5 class="mt-4">Validation des ecritures</h5>
+                <p>Les ecritures sont validees par le directeur :</p>
+                <ul>
+                    <li>Validation individuelle depuis le detail de l'ecriture</li>
+                    <li>Validation en lot depuis la liste des ecritures</li>
+                </ul>
+                <div class="alert alert-danger">
+                    <i class="bi bi-lock me-2"></i>
+                    Une fois validee, une ecriture ne peut plus etre modifiee.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Projets et budgets -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#section3">
+                <i class="bi bi-3-circle me-2"></i>Projets et budgets
+            </button>
+        </h2>
+        <div id="section3" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Creer un projet</h5>
+                <ol>
+                    <li>Allez dans <strong>Projets</strong></li>
+                    <li>Cliquez sur <strong>"Nouveau projet"</strong></li>
+                    <li>Renseignez : code, nom, bailleur, dates, budget total</li>
+                    <li>Enregistrez</li>
+                </ol>
+
+                <h5 class="mt-4">Gerer les lignes budgetaires</h5>
+                <p>Chaque projet a des lignes budgetaires qui permettent de suivre les depenses par categorie :</p>
+                <ol>
+                    <li>Ouvrez le detail du projet</li>
+                    <li>Dans l'onglet <strong>Budget</strong>, ajoutez des lignes</li>
+                    <li>Chaque ligne a : code, libelle, montant prevu</li>
+                </ol>
+
+                <h5 class="mt-4">Suivi budgetaire</h5>
+                <p>Le systeme calcule automatiquement :</p>
+                <ul>
+                    <li><strong>Budget</strong> : Montant prevu</li>
+                    <li><strong>Realise</strong> : Somme des debits sur comptes classe 6 (charges)</li>
+                    <li><strong>Solde</strong> : Budget - Realise</li>
+                    <li><strong>Taux d'execution</strong> : (Realise / Budget) x 100</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Rapports -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#section4">
+                <i class="bi bi-4-circle me-2"></i>Rapports
+            </button>
+        </h2>
+        <div id="section4" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Rapport bailleur</h5>
+                <p>Ce rapport presente l'execution budgetaire d'un projet pour le bailleur :</p>
+                <ol>
+                    <li>Allez dans <strong>Rapports</strong></li>
+                    <li>Selectionnez un projet</li>
+                    <li>Choisissez la periode (optionnel)</li>
+                    <li>Generez le rapport</li>
+                    <li>Exportez en PDF ou Excel</li>
+                </ol>
+
+                <h5 class="mt-4">Balance generale</h5>
+                <p>Affiche tous les comptes avec leurs soldes debiteurs et crediteurs.</p>
+
+                <h5 class="mt-4">Etats financiers</h5>
+                <ul>
+                    <li><strong>Bilan</strong> : Situation patrimoniale</li>
+                    <li><strong>Compte de resultat</strong> : Charges et produits</li>
+                </ul>
+
+                <h5 class="mt-4">Reconciliation analytique</h5>
+                <p>Permet de verifier la coherence entre :</p>
+                <ul>
+                    <li>La comptabilite generale (grand livre)</li>
+                    <li>La comptabilite analytique (par projet)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Tresorerie -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#section5">
+                <i class="bi bi-5-circle me-2"></i>Tresorerie
+            </button>
+        </h2>
+        <div id="section5" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Comptes de tresorerie</h5>
+                <p>Gerez vos comptes bancaires et caisses :</p>
+                <ul>
+                    <li>Ajoutez un compte (banque ou caisse)</li>
+                    <li>Suivez les soldes en temps reel</li>
+                    <li>Consultez l'historique des mouvements</li>
+                </ul>
+
+                <h5 class="mt-4">Reconciliation bancaire</h5>
+                <ol>
+                    <li>Allez dans <strong>Tresorerie > Reconciliation bancaire</strong></li>
+                    <li>Selectionnez le compte et la periode</li>
+                    <li>Comparez le solde comptable avec le releve bancaire</li>
+                    <li>Pointez les operations rapprochees</li>
+                </ol>
+
+                <h5 class="mt-4">Petite caisse</h5>
+                <p>Pour les depenses en especes de faible montant :</p>
+                <ul>
+                    <li>Enregistrez les sorties de caisse</li>
+                    <li>Joignez les justificatifs</li>
+                    <li>Effectuez le reconstitution periodique</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6: Administration -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#section6">
+                <i class="bi bi-6-circle me-2"></i>Administration (Directeur)
+            </button>
+        </h2>
+        <div id="section6" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+            <div class="accordion-body">
+                <h5>Gestion des utilisateurs</h5>
+                <p>Le directeur peut :</p>
+                <ul>
+                    <li>Creer des utilisateurs</li>
+                    <li>Attribuer des roles : comptable, directeur, auditeur</li>
+                    <li>Activer/desactiver des comptes</li>
+                    <li>Reinitialiser les mots de passe</li>
+                </ul>
+
+                <h5 class="mt-4">Exercices comptables</h5>
+                <ul>
+                    <li>Creer un nouvel exercice</li>
+                    <li>Cloturer un exercice (operation irreversible)</li>
+                </ul>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-octagon me-2"></i>
+                    <strong>Attention :</strong> La cloture d'exercice est definitive. Aucune ecriture ne pourra etre ajoutee ou modifiee apres cloture.
+                </div>
+
+                <h5 class="mt-4">Journal d'audit</h5>
+                <p>Consultez l'historique de toutes les actions :</p>
+                <ul>
+                    <li>Creation, modification, suppression</li>
+                    <li>Validations d'ecritures</li>
+                    <li>Connexions utilisateurs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

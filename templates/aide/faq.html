@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}FAQ - CREATES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-chat-left-dots me-2"></i>Questions frequentes (FAQ)</h2>
+    <a href="{{ url_for('aide_index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour a l'aide
+    </a>
+</div>
+
+<p class="lead mb-4">Trouvez rapidement les reponses aux questions les plus courantes.</p>
+
+<!-- Navigation par categorie -->
+<div class="mb-4">
+    <span class="fw-bold me-2">Aller a :</span>
+    <a href="#connexion" class="badge bg-primary text-decoration-none me-1">Connexion</a>
+    <a href="#ecritures" class="badge bg-primary text-decoration-none me-1">Ecritures</a>
+    <a href="#projets" class="badge bg-primary text-decoration-none me-1">Projets</a>
+    <a href="#rapports" class="badge bg-primary text-decoration-none me-1">Rapports</a>
+    <a href="#technique" class="badge bg-primary text-decoration-none me-1">Technique</a>
+</div>
+
+<!-- Connexion et compte -->
+<div class="card mb-4" id="connexion">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-person-lock me-2"></i>Connexion et compte</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqConnexion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q1">
+                        J'ai oublie mon mot de passe, comment le recuperer ?
+                    </button>
+                </h2>
+                <div id="q1" class="accordion-collapse collapse" data-bs-parent="#faqConnexion">
+                    <div class="accordion-body">
+                        Contactez l'administrateur (directeur) qui pourra reinitialiser votre mot de passe depuis le menu <strong>Administration > Utilisateurs</strong>.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2">
+                        Mon compte est desactive, que faire ?
+                    </button>
+                </h2>
+                <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqConnexion">
+                    <div class="accordion-body">
+                        Seul le directeur peut reactiver un compte. Contactez-le pour demander la reactivation.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">
+                        Quels sont les differents roles dans l'application ?
+                    </button>
+                </h2>
+                <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqConnexion">
+                    <div class="accordion-body">
+                        <ul>
+                            <li><strong>Comptable</strong> : Saisie des ecritures, gestion des projets, generation des rapports</li>
+                            <li><strong>Directeur</strong> : Toutes les fonctions + validation des ecritures, gestion des utilisateurs, cloture d'exercice</li>
+                            <li><strong>Auditeur</strong> : Consultation uniquement (lecture seule), acces aux rapports et au journal d'audit</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ecritures comptables -->
+<div class="card mb-4" id="ecritures">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Ecritures comptables</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqEcritures">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4">
+                        Pourquoi mon ecriture ne s'enregistre pas ?
+                    </button>
+                </h2>
+                <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqEcritures">
+                    <div class="accordion-body">
+                        Verifiez que :
+                        <ul>
+                            <li>Le total des debits egale le total des credits</li>
+                            <li>Au moins un projet est selectionne</li>
+                            <li>La date est dans l'exercice en cours (ouvert)</li>
+                            <li>Tous les champs obligatoires sont remplis</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q5">
+                        Comment modifier une ecriture validee ?
+                    </button>
+                </h2>
+                <div id="q5" class="accordion-collapse collapse" data-bs-parent="#faqEcritures">
+                    <div class="accordion-body">
+                        <strong>Ce n'est pas possible.</strong> Une fois validee, une ecriture est verrouillee pour des raisons de securite et de conformite. Si une correction est necessaire, vous devez passer une ecriture de regularisation (extourne).
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q6">
+                        Comment rattacher une ecriture a plusieurs projets ?
+                    </button>
+                </h2>
+                <div id="q6" class="accordion-collapse collapse" data-bs-parent="#faqEcritures">
+                    <div class="accordion-body">
+                        Lors de la saisie, vous pouvez selectionner plusieurs projets et definir la repartition (ventilation analytique). Cela permet d'imputer une charge partagee entre differents projets.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q7">
+                        Quel journal utiliser pour mes ecritures ?
+                    </button>
+                </h2>
+                <div id="q7" class="accordion-collapse collapse" data-bs-parent="#faqEcritures">
+                    <div class="accordion-body">
+                        <ul>
+                            <li><strong>AC (Achats)</strong> : Factures fournisseurs</li>
+                            <li><strong>BQ (Banque)</strong> : Operations bancaires</li>
+                            <li><strong>CA (Caisse)</strong> : Operations en especes</li>
+                            <li><strong>OD (Operations Diverses)</strong> : Regularisations, amortissements</li>
+                            <li><strong>SAL (Salaires)</strong> : Paie du personnel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Projets et budgets -->
+<div class="card mb-4" id="projets">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Projets et budgets</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqProjets">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q8">
+                        Comment est calcule le "realise" d'un projet ?
+                    </button>
+                </h2>
+                <div id="q8" class="accordion-collapse collapse" data-bs-parent="#faqProjets">
+                    <div class="accordion-body">
+                        Le realise correspond a la <strong>somme des debits</strong> sur les comptes de <strong>classe 6 (charges)</strong> rattaches au projet. Les credits (remboursements, avoirs) viennent en deduction.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q9">
+                        Le budget affiche n'est pas correct, pourquoi ?
+                    </button>
+                </h2>
+                <div id="q9" class="accordion-collapse collapse" data-bs-parent="#faqProjets">
+                    <div class="accordion-body">
+                        Verifiez que :
+                        <ul>
+                            <li>Les lignes budgetaires sont correctement saisies</li>
+                            <li>Les montants sont dans la bonne devise</li>
+                            <li>Le budget annuel est correctement reparti si le projet est pluriannuel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q10">
+                        Comment gerer un projet avec plusieurs bailleurs ?
+                    </button>
+                </h2>
+                <div id="q10" class="accordion-collapse collapse" data-bs-parent="#faqProjets">
+                    <div class="accordion-body">
+                        Il est recommande de creer un projet separe pour chaque bailleur, meme si les activites sont liees. Cela facilite le reporting et le suivi budgetaire specifique a chaque bailleur.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rapports -->
+<div class="card mb-4" id="rapports">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Rapports</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqRapports">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q11">
+                        Comment generer un rapport pour le bailleur ?
+                    </button>
+                </h2>
+                <div id="q11" class="accordion-collapse collapse" data-bs-parent="#faqRapports">
+                    <div class="accordion-body">
+                        <ol>
+                            <li>Allez dans <strong>Rapports</strong></li>
+                            <li>Selectionnez le projet concerne</li>
+                            <li>Definissez la periode (dates de debut et fin)</li>
+                            <li>Cliquez sur "Generer"</li>
+                            <li>Exportez en PDF ou Excel selon les exigences du bailleur</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q12">
+                        Pourquoi y a-t-il un ecart dans la reconciliation analytique ?
+                    </button>
+                </h2>
+                <div id="q12" class="accordion-collapse collapse" data-bs-parent="#faqRapports">
+                    <div class="accordion-body">
+                        Un ecart peut survenir si :
+                        <ul>
+                            <li>Des ecritures ne sont pas imputees a un projet</li>
+                            <li>La ventilation analytique n'atteint pas 100%</li>
+                            <li>Des comptes de charge (classe 6) ne sont pas rattaches aux projets</li>
+                        </ul>
+                        Consultez le detail des ecarts pour identifier les ecritures concernees.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Problemes techniques -->
+<div class="card mb-4" id="technique">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Problemes techniques</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="faqTechnique">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q13">
+                        L'application est lente, que faire ?
+                    </button>
+                </h2>
+                <div id="q13" class="accordion-collapse collapse" data-bs-parent="#faqTechnique">
+                    <div class="accordion-body">
+                        <ul>
+                            <li>Rafraichissez la page (F5 ou Ctrl+R)</li>
+                            <li>Videz le cache du navigateur</li>
+                            <li>Verifiez votre connexion internet</li>
+                            <li>Essayez un autre navigateur (Chrome, Firefox recommandes)</li>
+                        </ul>
+                        Si le probleme persiste, contactez le support technique.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q14">
+                        Le telechargement PDF ne fonctionne pas
+                    </button>
+                </h2>
+                <div id="q14" class="accordion-collapse collapse" data-bs-parent="#faqTechnique">
+                    <div class="accordion-body">
+                        <ul>
+                            <li>Verifiez que les pop-ups ne sont pas bloques</li>
+                            <li>Assurez-vous que votre navigateur est a jour</li>
+                            <li>Essayez l'export Excel comme alternative</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q15">
+                        Je ne peux pas telecharger une piece justificative
+                    </button>
+                </h2>
+                <div id="q15" class="accordion-collapse collapse" data-bs-parent="#faqTechnique">
+                    <div class="accordion-body">
+                        Les formats acceptes sont : PDF, JPG, JPEG, PNG. La taille maximale est de 16 Mo par fichier. Verifiez que votre fichier respecte ces limites.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact -->
+<div class="card">
+    <div class="card-body text-center">
+        <h5>Vous n'avez pas trouve la reponse a votre question ?</h5>
+        <p>Contactez le support technique : <strong>support@creates.ngo</strong></p>
+        <a href="{{ url_for('aide_index') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i>Retour au centre d'aide
+        </a>
+    </div>
+</div>
+{% endblock %}

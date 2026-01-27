@@ -3,7 +3,7 @@ CREATES NGO Accounting System
 Application de comptabilité pour ONG - Conforme SYSCOHADA
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -5458,6 +5458,45 @@ def calculer_soldes_classe(classes, exercice_id=None, type_solde=None, inclure_n
             })
 
     return resultats
+
+
+# =============================================================================
+# ROUTES - AIDE
+# =============================================================================
+
+@app.route('/aide')
+@login_required
+def aide_index():
+    """Page d'accueil de l'aide"""
+    return render_template('aide/index.html')
+
+
+@app.route('/aide/guide')
+@login_required
+def guide_utilisateur():
+    """Guide utilisateur avec tutoriels"""
+    return render_template('aide/guide.html')
+
+
+@app.route('/aide/manuel')
+@login_required
+def manuel_gestion():
+    """Manuel de gestion CREATES"""
+    return render_template('aide/manuel.html')
+
+
+@app.route('/aide/faq')
+@login_required
+def faq():
+    """Questions fréquentes"""
+    return render_template('aide/faq.html')
+
+
+@app.route('/aide/manuel/pdf')
+@login_required
+def telecharger_manuel():
+    """Télécharger le Manuel de Gestion en PDF"""
+    return send_from_directory('static/docs', 'Manuel_Gestion_CREATES.pdf', as_attachment=True)
 
 
 # =============================================================================

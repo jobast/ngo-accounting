@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}Manuel de Gestion - CREATES{% endblock %}
+
+{% block extra_css %}
+<style>
+    .toc-link {
+        display: block;
+        padding: 5px 10px;
+        color: var(--primary-color);
+        text-decoration: none;
+        border-left: 2px solid transparent;
+    }
+    .toc-link:hover {
+        border-left-color: var(--primary-color);
+        background-color: #f8f9fa;
+    }
+    .toc-link.active {
+        border-left-color: var(--primary-color);
+        font-weight: bold;
+    }
+    .manuel-section {
+        scroll-margin-top: 20px;
+    }
+    .manuel-section h3 {
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-earmark-text me-2"></i>Manuel de Gestion CREATES</h2>
+    <div>
+        <a href="{{ url_for('telecharger_manuel') }}" class="btn btn-primary me-2">
+            <i class="bi bi-download me-1"></i>Telecharger PDF
+        </a>
+        <a href="{{ url_for('aide_index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Table des matieres (sidebar) -->
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Sommaire</h6>
+            </div>
+            <div class="card-body p-2">
+                <nav id="toc">
+                    <a href="#introduction" class="toc-link">1. Introduction</a>
+                    <a href="#organisation" class="toc-link">2. Organisation</a>
+                    <a href="#procedures-financieres" class="toc-link">3. Procedures financieres</a>
+                    <a href="#comptabilite" class="toc-link">4. Comptabilite</a>
+                    <a href="#gestion-projets" class="toc-link">5. Gestion des projets</a>
+                    <a href="#achats" class="toc-link">6. Achats et approvisionnement</a>
+                    <a href="#tresorerie" class="toc-link">7. Tresorerie</a>
+                    <a href="#ressources-humaines" class="toc-link">8. Ressources humaines</a>
+                    <a href="#audit" class="toc-link">9. Audit et controle</a>
+                    <a href="#annexes" class="toc-link">10. Annexes</a>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu du manuel -->
+    <div class="col-lg-9">
+
+        <!-- Section 1: Introduction -->
+        <section id="introduction" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>1. Introduction</h3>
+
+                <h5>1.1 Presentation du GIE CREATES</h5>
+                <p>Le <strong>GIE CREATES</strong> (Centre de Recherche-Action sur les Transformations Ecologiques et Sociales) est un Groupement d'Interet Economique base a Ngaparou, departement de Mbour, Senegal.</p>
+                <p>CREATES oeuvre pour la promotion du developpement durable a travers des projets de recherche-action finances par des bailleurs internationaux.</p>
+
+                <h5>1.2 Objectif du manuel</h5>
+                <p>Ce manuel definit les procedures administratives et financieres a respecter pour assurer :</p>
+                <ul>
+                    <li>Une gestion transparente et rigoureuse des fonds</li>
+                    <li>La conformite aux exigences des bailleurs</li>
+                    <li>Le respect des normes comptables SYSCOHADA</li>
+                    <li>La tracabilite de toutes les operations</li>
+                </ul>
+
+                <h5>1.3 Champ d'application</h5>
+                <p>Ce manuel s'applique a l'ensemble du personnel de CREATES et a toutes les operations financieres et administratives du GIE.</p>
+            </div>
+        </section>
+
+        <!-- Section 2: Organisation -->
+        <section id="organisation" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>2. Organisation</h3>
+
+                <h5>2.1 Organigramme</h5>
+                <ul>
+                    <li><strong>Assemblee Generale</strong> : Instance supreme de decision</li>
+                    <li><strong>Gerant / Directeur</strong> : Responsable de la gestion quotidienne</li>
+                    <li><strong>Comptable</strong> : Gestion financiere et comptable</li>
+                    <li><strong>Chefs de projets</strong> : Coordination des activites</li>
+                </ul>
+
+                <h5>2.2 Roles et responsabilites</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fonction</th>
+                            <th>Responsabilites principales</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Directeur</strong></td>
+                            <td>
+                                <ul>
+                                    <li>Validation des depenses</li>
+                                    <li>Signature des contrats</li>
+                                    <li>Approbation des rapports financiers</li>
+                                    <li>Gestion des utilisateurs</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Comptable</strong></td>
+                            <td>
+                                <ul>
+                                    <li>Saisie des ecritures comptables</li>
+                                    <li>Preparation des rapports</li>
+                                    <li>Gestion de la tresorerie</li>
+                                    <li>Archivage des pieces justificatives</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Chef de projet</strong></td>
+                            <td>
+                                <ul>
+                                    <li>Elaboration des demandes de depenses</li>
+                                    <li>Suivi budgetaire du projet</li>
+                                    <li>Rapport d'activites</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5>2.3 Separation des taches</h5>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Le principe de separation des taches est fondamental : celui qui engage une depense ne peut pas etre celui qui la paye ou qui l'enregistre.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Procedures financieres -->
+        <section id="procedures-financieres" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>3. Procedures financieres</h3>
+
+                <h5>3.1 Principe d'eligibilite des depenses</h5>
+                <p>Une depense est eligible si elle est :</p>
+                <ul>
+                    <li><strong>Necessaire</strong> : Liee directement aux activites du projet</li>
+                    <li><strong>Raisonnable</strong> : Conforme aux prix du marche</li>
+                    <li><strong>Autorisee</strong> : Prevue au budget approuve</li>
+                    <li><strong>Justifiee</strong> : Accompagnee de pieces probantes</li>
+                </ul>
+
+                <h5>3.2 Circuit de validation</h5>
+                <ol>
+                    <li><strong>Demande</strong> : Le chef de projet prepare la demande de depense</li>
+                    <li><strong>Verification</strong> : Le comptable verifie la disponibilite budgetaire</li>
+                    <li><strong>Approbation</strong> : Le directeur valide la demande</li>
+                    <li><strong>Execution</strong> : Le paiement est effectue</li>
+                    <li><strong>Enregistrement</strong> : L'ecriture comptable est saisie</li>
+                    <li><strong>Archivage</strong> : Les pieces sont numerisees et classees</li>
+                </ol>
+
+                <h5>3.3 Seuils d'autorisation</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Montant (FCFA)</th>
+                            <th>Autorite d'approbation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>&lt; 100 000</td>
+                            <td>Comptable</td>
+                        </tr>
+                        <tr>
+                            <td>100 000 - 500 000</td>
+                            <td>Directeur</td>
+                        </tr>
+                        <tr>
+                            <td>&gt; 500 000</td>
+                            <td>Directeur + consultation AG si necessaire</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 4: Comptabilite -->
+        <section id="comptabilite" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>4. Comptabilite</h3>
+
+                <h5>4.1 Normes applicables</h5>
+                <p>CREATES applique les normes <strong>SYSCOHADA</strong> (Systeme Comptable Ouest-Africain Harmonise).</p>
+
+                <h5>4.2 Plan comptable</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Classe</th>
+                            <th>Designation</th>
+                            <th>Exemples</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>Capitaux propres</td><td>Capital, reserves</td></tr>
+                        <tr><td>2</td><td>Immobilisations</td><td>Materiel, vehicules</td></tr>
+                        <tr><td>3</td><td>Stocks</td><td>Fournitures</td></tr>
+                        <tr><td>4</td><td>Tiers</td><td>Fournisseurs (40x), Personnel (42x)</td></tr>
+                        <tr><td>5</td><td>Tresorerie</td><td>Banque (52x), Caisse (57x)</td></tr>
+                        <tr><td>6</td><td>Charges</td><td>Achats, Services, Salaires</td></tr>
+                        <tr><td>7</td><td>Produits</td><td>Subventions (74x)</td></tr>
+                    </tbody>
+                </table>
+
+                <h5>4.3 Pieces justificatives requises</h5>
+                <ul>
+                    <li><strong>Achats</strong> : Facture originale, bon de commande, bon de livraison</li>
+                    <li><strong>Salaires</strong> : Bulletin de paie, fiche de presence</li>
+                    <li><strong>Missions</strong> : Ordre de mission, rapport, billets, factures hotel</li>
+                    <li><strong>Petites depenses</strong> : Ticket de caisse ou recu signe</li>
+                </ul>
+
+                <h5>4.4 Cloture comptable</h5>
+                <p>La cloture de l'exercice comptable suit les etapes suivantes :</p>
+                <ol>
+                    <li>Verification de toutes les ecritures</li>
+                    <li>Ajustements et regularisations</li>
+                    <li>Rapprochement bancaire</li>
+                    <li>Validation finale par le directeur</li>
+                    <li>Cloture dans le systeme (irreversible)</li>
+                    <li>Generation des etats financiers annuels</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Section 5: Gestion des projets -->
+        <section id="gestion-projets" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>5. Gestion des projets</h3>
+
+                <h5>5.1 Cycle de vie d'un projet</h5>
+                <ol>
+                    <li><strong>Elaboration</strong> : Conception, budgetisation, soumission</li>
+                    <li><strong>Demarrage</strong> : Convention signee, ouverture compte dedie</li>
+                    <li><strong>Execution</strong> : Activites, depenses, rapports periodiques</li>
+                    <li><strong>Cloture</strong> : Rapport final, audit, archivage</li>
+                </ol>
+
+                <h5>5.2 Suivi budgetaire</h5>
+                <p>Chaque projet dispose d'un budget detaille par ligne budgetaire. Le suivi inclut :</p>
+                <ul>
+                    <li><strong>Budget approuve</strong> : Montant contractuel</li>
+                    <li><strong>Depenses engagees</strong> : Commandes en cours</li>
+                    <li><strong>Depenses realisees</strong> : Paiements effectues</li>
+                    <li><strong>Solde disponible</strong> : Budget - Realise</li>
+                </ul>
+
+                <h5>5.3 Reporting aux bailleurs</h5>
+                <p>Les rapports financiers sont prepares selon la periodicite definie dans la convention :</p>
+                <ul>
+                    <li>Rapport financier intermediaire (trimestriel ou semestriel)</li>
+                    <li>Rapport financier final</li>
+                    <li>Rapport d'audit (si requis)</li>
+                </ul>
+
+                <h5>5.4 Virements entre lignes budgetaires</h5>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Les virements entre lignes budgetaires necessitent generalement l'approbation prealable du bailleur. Consulter la convention de financement.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Achats -->
+        <section id="achats" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>6. Achats et approvisionnement</h3>
+
+                <h5>6.1 Procedures d'achat selon les montants</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Montant (FCFA)</th>
+                            <th>Procedure</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>&lt; 100 000</td>
+                            <td>Achat direct (1 devis suffit)</td>
+                        </tr>
+                        <tr>
+                            <td>100 000 - 500 000</td>
+                            <td>Consultation restreinte (3 devis minimum)</td>
+                        </tr>
+                        <tr>
+                            <td>500 000 - 2 000 000</td>
+                            <td>Appel d'offres simplifie</td>
+                        </tr>
+                        <tr>
+                            <td>&gt; 2 000 000</td>
+                            <td>Appel d'offres ouvert</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5>6.2 Circuit des achats</h5>
+                <ol>
+                    <li>Demande d'achat par le service demandeur</li>
+                    <li>Verification budgetaire par le comptable</li>
+                    <li>Collecte des devis (selon seuils)</li>
+                    <li>Selection du fournisseur (meilleur rapport qualite/prix)</li>
+                    <li>Etablissement du bon de commande</li>
+                    <li>Validation par le directeur</li>
+                    <li>Reception et verification de la livraison</li>
+                    <li>Paiement apres reception de la facture</li>
+                </ol>
+
+                <h5>6.3 Gestion des fournisseurs</h5>
+                <p>Un fichier fournisseurs est tenu a jour avec :</p>
+                <ul>
+                    <li>Raison sociale, NINEA, adresse</li>
+                    <li>Contacts</li>
+                    <li>Historique des achats</li>
+                    <li>Evaluation de la qualite des prestations</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 7: Tresorerie -->
+        <section id="tresorerie" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>7. Tresorerie</h3>
+
+                <h5>7.1 Gestion des comptes bancaires</h5>
+                <ul>
+                    <li>Compte bancaire dedie par projet (si requis par le bailleur)</li>
+                    <li>Double signature obligatoire pour les cheques &gt; 500 000 FCFA</li>
+                    <li>Rapprochement bancaire mensuel</li>
+                </ul>
+
+                <h5>7.2 Petite caisse</h5>
+                <ul>
+                    <li>Montant maximum en caisse : 200 000 FCFA</li>
+                    <li>Depense unitaire maximum : 50 000 FCFA</li>
+                    <li>Justificatif obligatoire pour chaque sortie</li>
+                    <li>Reconstitution sur justificatifs valides</li>
+                    <li>Comptage physique hebdomadaire</li>
+                </ul>
+
+                <h5>7.3 Avances</h5>
+                <p>Les avances au personnel sont possibles sous conditions :</p>
+                <ul>
+                    <li>Demande ecrite motivee</li>
+                    <li>Maximum 1 mois de salaire</li>
+                    <li>Remboursement sur 3 mois maximum</li>
+                    <li>Regularisation avant nouvelle avance</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 8: Ressources humaines -->
+        <section id="ressources-humaines" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>8. Ressources humaines</h3>
+
+                <h5>8.1 Types de contrats</h5>
+                <ul>
+                    <li><strong>CDI</strong> : Personnel permanent</li>
+                    <li><strong>CDD</strong> : Personnel projet (duree du financement)</li>
+                    <li><strong>Consultants</strong> : Prestations ponctuelles</li>
+                </ul>
+
+                <h5>8.2 Paie et charges sociales</h5>
+                <p>Le calcul de la paie inclut :</p>
+                <ul>
+                    <li>Salaire de base</li>
+                    <li>Indemnites (transport, logement)</li>
+                    <li>Retenues salariales : IPRES, CSS</li>
+                    <li>Charges patronales : IPRES, CSS, IPM</li>
+                    <li>Impot sur le revenu (IR/VRS)</li>
+                </ul>
+
+                <h5>8.3 Frais de mission</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Type</th>
+                            <th>Bareme (FCFA/jour)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Perdiem national</td><td>25 000</td></tr>
+                        <tr><td>Perdiem regional</td><td>35 000</td></tr>
+                        <tr><td>Perdiem international</td><td>Selon destination</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 9: Audit -->
+        <section id="audit" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>9. Audit et controle</h3>
+
+                <h5>9.1 Controle interne</h5>
+                <ul>
+                    <li>Verification mensuelle de la caisse</li>
+                    <li>Rapprochement bancaire mensuel</li>
+                    <li>Revue trimestrielle des budgets projets</li>
+                    <li>Inventaire physique annuel des immobilisations</li>
+                </ul>
+
+                <h5>9.2 Audit externe</h5>
+                <p>Un audit externe est realise :</p>
+                <ul>
+                    <li>Annuellement pour les comptes de CREATES</li>
+                    <li>A la cloture de chaque projet (si requis)</li>
+                    <li>A la demande du bailleur</li>
+                </ul>
+
+                <h5>9.3 Conservation des documents</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Type de document</th>
+                            <th>Duree</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Pieces comptables</td><td>10 ans</td></tr>
+                        <tr><td>Contrats</td><td>10 ans apres expiration</td></tr>
+                        <tr><td>Dossiers projets</td><td>10 ans apres cloture</td></tr>
+                        <tr><td>Bulletins de paie</td><td>5 ans</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 10: Annexes -->
+        <section id="annexes" class="manuel-section card mb-4">
+            <div class="card-body">
+                <h3>10. Annexes</h3>
+
+                <h5>10.1 Modeles de documents</h5>
+                <p>Les modeles suivants sont disponibles aupres du comptable :</p>
+                <ul>
+                    <li>Demande de depense</li>
+                    <li>Bon de commande</li>
+                    <li>Ordre de mission</li>
+                    <li>Rapport de mission</li>
+                    <li>Fiche de presence</li>
+                    <li>Demande d'avance</li>
+                </ul>
+
+                <h5>10.2 Contacts utiles</h5>
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td><strong>Direction</strong></td>
+                            <td>direction@creates.ngo</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Comptabilite</strong></td>
+                            <td>compta@creates.ngo</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Support technique</strong></td>
+                            <td>support@creates.ngo</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5>10.3 Historique des modifications</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Version</th>
+                            <th>Date</th>
+                            <th>Modifications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1.0</td>
+                            <td>Janvier 2024</td>
+                            <td>Version initiale</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Highlight active section in TOC on scroll
+document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('.manuel-section');
+    const tocLinks = document.querySelectorAll('.toc-link');
+
+    window.addEventListener('scroll', function() {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (pageYOffset >= sectionTop - 100) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        tocLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
