@@ -41,6 +41,19 @@ if not _secret_key:
     _secret_key = 'dev-only-insecure-key-do-not-use-in-production'
 
 app.config['SECRET_KEY'] = _secret_key
+# Shared session cookie between compta and S&E apps
+app.config['SESSION_COOKIE_NAME'] = 'creates_session'
+app.config['SESSION_COOKIE_PATH'] = '/'
+app.config['REMEMBER_COOKIE_NAME'] = 'creates_remember'
+
+# Cross-app URLs
+COMPTA_URL = os.environ.get('COMPTA_URL', 'http://localhost:5001')
+SE_URL = os.environ.get('SE_URL', 'http://localhost:5002')
+
+@app.context_processor
+def inject_app_urls():
+    return {'compta_url': COMPTA_URL, 'se_url': SE_URL}
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///ngo_accounting.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -1403,9 +1416,9 @@ def clear_login_attempts(ip_address):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Page de connexion"""
+    """Page de connexion unifiée"""
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('portail'))
 
     ip_address = request.remote_addr
 
@@ -1417,6 +1430,7 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        destination = request.form.get('destination', 'portail')
 
         user = Utilisateur.query.filter_by(email=email).first()
 
@@ -1432,21 +1446,46 @@ def login():
             # SECURITY: Validate next parameter to prevent open redirect
             next_page = request.args.get('next')
             if next_page:
-                # Only allow relative URLs (no scheme/netloc)
                 from urllib.parse import urlparse
                 parsed = urlparse(next_page)
                 if parsed.netloc or parsed.scheme:
                     next_page = None  # Reject external URLs
+
             flash(f'Bienvenue, {user.prenom or user.nom}!', 'success')
-            return redirect(next_page or url_for('dashboard'))
+
+            if next_page:
+                return redirect(next_page)
+            elif destination == 'compta':
+                return redirect(url_for('dashboard'))
+            elif destination == 'se':
+                return redirect(SE_URL + '/se/')
+            else:
+                return redirect(url_for('portail'))
         else:
             record_login_attempt(ip_address, email)
             flash('Email ou mot de passe incorrect.', 'danger')
-            # Log failed login attempt
             log_audit('utilisateurs', None, 'LOGIN_FAILED', new_values={'email': email})
             db.session.commit()
 
     return render_template('auth/login.html')
+
+
+@app.route('/portail')
+@login_required
+def portail():
+    """Portail d'accès aux applications CREATES"""
+    role = current_user.role
+    # Master roles have access to both apps
+    is_master = role in ['directeur', 'admin']
+    # S&E roles
+    is_se = role in ['charge_se', 'chef_projet', 'consultant', 'admin', 'directeur']
+    # Compta roles
+    is_compta = role in ['comptable', 'auditeur', 'directeur', 'admin']
+
+    return render_template('portail.html',
+                           is_master=is_master,
+                           is_se=is_se,
+                           is_compta=is_compta)
 
 
 @app.route('/logout')
@@ -3417,6 +3456,24 @@ def deduire_avance(id):
     return redirect(url_for('detail_avance', id=id))
 
 
+@app.route('/comptabilite/avances/<int:id>/pdf')
+@login_required
+def pdf_avance(id):
+    """Générer PDF de la demande d'avance"""
+    avance = Avance.query.get_or_404(id)
+
+    html = render_template('tresorerie/avance_pdf.html', avance=avance, org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=avance_{avance.numero}.pdf'
+        return response
+    except ImportError:
+        return html
+
+
 # =============================================================================
 # ROUTES - PETITE CAISSE
 # =============================================================================
@@ -3454,6 +3511,158 @@ def petite_caisse():
                           compte_id=compte_id,
                           solde=float(solde),
                           mouvements=mouvements)
+
+
+@app.route('/comptabilite/petite-caisse/inventaire-pdf')
+@login_required
+@role_required(['comptable', 'directeur'])
+def pdf_inventaire_caisse():
+    """Générer PDF du PV d'inventaire de caisse"""
+    compte_id = request.args.get('compte_id', type=int)
+
+    if not compte_id:
+        # Premier compte de caisse par défaut
+        compte = CompteComptable.query.filter(
+            CompteComptable.numero.like('57%'),
+            CompteComptable.actif == True
+        ).first()
+        if not compte:
+            flash("Aucun compte de caisse trouvé.", 'danger')
+            return redirect(url_for('petite_caisse'))
+        compte_id = compte.id
+    else:
+        compte = CompteComptable.query.get_or_404(compte_id)
+
+    # Solde comptable
+    solde = db.session.query(
+        db.func.sum(LigneEcriture.debit) - db.func.sum(LigneEcriture.credit)
+    ).filter(LigneEcriture.compte_id == compte_id).scalar() or 0
+
+    today = date.today()
+    mois_noms = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+    html = render_template('comptabilite/inventaire_caisse_pdf.html',
+                          compte=compte,
+                          date_inventaire=today,
+                          mois_libelle=mois_noms[today.month],
+                          annee=today.year,
+                          realise_par=current_user.nom_complet if hasattr(current_user, 'nom_complet') else current_user.email,
+                          solde_comptable=float(solde),
+                          total_physique=0,
+                          ecart=float(-solde) if solde else 0,
+                          comptage={},
+                          explication_ecart='',
+                          observations='',
+                          org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=inventaire_caisse_{today.strftime("%Y%m%d")}.pdf'
+        return response
+    except ImportError:
+        return html
+
+
+@app.route('/comptabilite/immobilisations/inventaire-pdf')
+@login_required
+@role_required(['comptable', 'directeur'])
+def pdf_inventaire_immobilisations():
+    """Générer PDF de l'inventaire physique des immobilisations"""
+    immobilisations = Immobilisation.query.filter(
+        Immobilisation.statut == 'actif'
+    ).order_by(Immobilisation.categorie, Immobilisation.code).all()
+
+    # Grouper par catégorie
+    immobilisations_par_categorie = {}
+    for immo in immobilisations:
+        cat = immo.categorie or 'Autre'
+        if cat not in immobilisations_par_categorie:
+            immobilisations_par_categorie[cat] = []
+        immobilisations_par_categorie[cat].append(immo)
+
+    total_acquisition = sum(float(i.valeur_acquisition or 0) for i in immobilisations)
+    total_amortissement = sum(i.cumul_amortissement for i in immobilisations)
+    total_vnc = sum(i.valeur_nette_comptable for i in immobilisations)
+
+    today = date.today()
+
+    # Exercice courant
+    exercice = ExerciceComptable.query.filter_by(statut='ouvert').first()
+
+    html = render_template('comptabilite/inventaire_immobilisations_pdf.html',
+                          immobilisations_par_categorie=immobilisations_par_categorie,
+                          total_acquisition=total_acquisition,
+                          total_amortissement=total_amortissement,
+                          total_vnc=total_vnc,
+                          total_count=len(immobilisations),
+                          actif_count=len(immobilisations),
+                          inactif_count=0,
+                          date_inventaire=today,
+                          exercice=exercice,
+                          annee=today.year,
+                          realise_par=current_user.nom_complet if hasattr(current_user, 'nom_complet') else current_user.email,
+                          observations='',
+                          org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=inventaire_immobilisations_{today.strftime("%Y%m%d")}.pdf'
+        return response
+    except ImportError:
+        return html
+
+
+@app.route('/comptabilite/certificat-non-facture/pdf')
+@login_required
+@role_required(['comptable', 'directeur'])
+def pdf_certificat_non_facture():
+    """Générer PDF vierge de certificat de non-facture"""
+    from collections import namedtuple
+
+    today = date.today()
+    annee = today.year
+    # Générer un numéro séquentiel
+    numero = f"CNF-{annee}-XXXX"
+
+    # Objet simple pour le template
+    CertificatData = namedtuple('CertificatData', [
+        'numero', 'date', 'declarant', 'fonction', 'projet',
+        'nature_depense', 'date_depense', 'lieu', 'fournisseur_nom',
+        'motif', 'montant', 'montant_en_lettres'
+    ])
+
+    certificat = CertificatData(
+        numero=numero,
+        date=today,
+        declarant=current_user.nom_complet if hasattr(current_user, 'nom_complet') else current_user.email,
+        fonction='_________________________',
+        projet=None,
+        nature_depense='_____________________________________________',
+        date_depense=today,
+        lieu='_________________________',
+        fournisseur_nom='_________________________',
+        motif='_____________________________________________',
+        montant=0,
+        montant_en_lettres='_____________________________________________'
+    )
+
+    html = render_template('tresorerie/certificat_non_facture_pdf.html',
+                          certificat=certificat,
+                          org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=certificat_non_facture_{today.strftime("%Y%m%d")}.pdf'
+        return response
+    except ImportError:
+        return html
 
 
 # =============================================================================
@@ -4486,6 +4695,24 @@ def rejeter_demande_achat(id):
 
     flash(f'Demande {demande.numero} rejetée.', 'warning')
     return redirect(url_for('detail_demande_achat', id=id))
+
+
+@app.route('/achats/demandes/<int:id>/pdf')
+@login_required
+def pdf_demande_achat(id):
+    """Générer PDF de la demande d'achat"""
+    demande = DemandeAchat.query.get_or_404(id)
+
+    html = render_template('achats/demande_pdf.html', demande=demande, org=ORG_INFO)
+
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=request.host_url).write_pdf()
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'inline; filename=demande_achat_{demande.numero}.pdf'
+        return response
+    except ImportError:
+        return html
 
 
 @app.route('/achats/demandes/<int:id>/generer-bc', methods=['POST'])
@@ -6853,6 +7080,11 @@ def telecharger_manuel():
     return send_from_directory('static/docs', 'Manuel_Gestion_CREATES.pdf', as_attachment=True)
 
 
+# S&E module has been moved to creates-se/ application
+
+
+
+
 # =============================================================================
 # INITIALISATION BASE DE DONNEES
 # =============================================================================
@@ -7123,4 +7355,4 @@ if __name__ == '__main__':
     # SECURITY: Debug mode disabled in production
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     port = int(os.environ.get('PORT', 5001))
-    app.run(debug=debug_mode, port=port)
+    app.run(host='0.0.0.0', debug=debug_mode, port=port)

@@ -291,6 +291,13 @@
         </div>
         {% endif %}
         <ul class="nav flex-column">
+            <!-- PORTAIL -->
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('portail') }}" title="Retour au portail">
+                    <i class="bi bi-grid"></i> Portail
+                </a>
+            </li>
+
             <!-- ACCUEIL -->
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
@@ -385,6 +392,11 @@
             <li class="nav-item">
                 <a class="nav-link {% if 'petite_caisse' in request.endpoint|default('') %}active{% endif %}" href="{{ url_for('petite_caisse') }}">
                     <i class="bi bi-wallet2"></i> Petite caisse
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('pdf_certificat_non_facture') }}" target="_blank">
+                    <i class="bi bi-file-earmark-text"></i> Certificat non-facture
                 </a>
             </li>
 
@@ -496,6 +508,18 @@
                     <i class="bi bi-question-circle"></i> Centre d'aide
                 </a>
             </li>
+
+            <!-- BASCULER VERS S&E (master users) -->
+            {% if current_user.role in ['directeur', 'admin', 'charge_se', 'chef_projet', 'consultant'] %}
+            <li class="nav-item">
+                <span class="nav-section-title">AUTRE APPLICATION</span>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ se_url }}/se/" title="Ouvrir le Suivi-Evaluation">
+                    <i class="bi bi-clipboard-data"></i> Suivi & Evaluation
+                </a>
+            </li>
+            {% endif %}
 
             <!-- USER -->
             <li class="nav-item mt-auto pt-3" style="border-top: 1px solid rgba(255,255,255,0.15);">

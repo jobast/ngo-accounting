@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CREATES - Portail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --creates-primary: #7B8B6F;
+            --creates-primary-dark: #5F6B53;
+            --creates-primary-light: #9BA78D;
+            --creates-text: #2D3A2E;
+            --creates-text-muted: #5A6B5C;
+            --creates-bg: #F5F6F3;
+        }
+        body {
+            background-color: var(--creates-bg);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--creates-text);
+        }
+        .portal-header {
+            background: linear-gradient(135deg, var(--creates-primary), var(--creates-primary-dark));
+            color: white;
+            padding: 40px 0 30px;
+            text-align: center;
+        }
+        .portal-header img { width: 70px; height: auto; margin-bottom: 15px; }
+        .portal-header h1 { font-weight: bold; font-size: 28px; margin-bottom: 5px; }
+        .portal-header p { opacity: 0.85; margin: 0; }
+        .portal-user {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 5px 15px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .portal-cards {
+            max-width: 800px;
+            margin: -30px auto 40px;
+            padding: 0 20px;
+        }
+        .app-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 35px 30px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: var(--creates-text);
+            display: block;
+            height: 100%;
+        }
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            color: var(--creates-text);
+        }
+        .app-card .icon-wrapper {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+        }
+        .app-card h3 { font-weight: 600; margin-bottom: 10px; font-size: 20px; }
+        .app-card p { color: var(--creates-text-muted); font-size: 14px; margin-bottom: 15px; }
+        .app-card .features { text-align: left; font-size: 13px; color: var(--creates-text-muted); }
+        .app-card .features li { margin-bottom: 4px; }
+        .app-card .btn-enter {
+            margin-top: 15px;
+            padding: 8px 25px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .icon-compta { background-color: rgba(90, 122, 138, 0.15); color: #5A7A8A; }
+        .icon-se { background-color: rgba(93, 138, 102, 0.15); color: #5D8A66; }
+        .btn-compta { background-color: #5A7A8A; border-color: #5A7A8A; color: white; }
+        .btn-compta:hover { background-color: #4A6A7A; border-color: #4A6A7A; color: white; }
+        .btn-se { background-color: #5D8A66; border-color: #5D8A66; color: white; }
+        .btn-se:hover { background-color: #4D7A56; border-color: #4D7A56; color: white; }
+        .portal-footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--creates-text-muted);
+            font-size: 13px;
+        }
+        .master-badge {
+            background: rgba(196, 163, 90, 0.2);
+            color: #8B7332;
+            border-radius: 10px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        a { color: var(--creates-primary); }
+        a:hover { color: var(--creates-primary-dark); }
+    </style>
+</head>
+<body>
+    <div class="portal-header">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="CREATES">
+        <h1>CREATES</h1>
+        <p>Plateforme de Gestion</p>
+        <div class="portal-user">
+            <i class="bi bi-person-circle me-1"></i>
+            {{ current_user.prenom or '' }} {{ current_user.nom }}
+            {% if is_master %}
+                <span class="master-badge ms-2"><i class="bi bi-star-fill me-1"></i>Master</span>
+            {% else %}
+                <span class="badge bg-light text-dark ms-2">{{ current_user.role }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container" style="max-width: 800px; margin-top: 20px;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="portal-cards">
+        <div class="row g-4">
+            {% if is_compta %}
+            <div class="col-md-6">
+                <a href="{{ url_for('dashboard') }}" class="app-card">
+                    <div class="icon-wrapper icon-compta">
+                        <i class="bi bi-journal-bookmark"></i>
+                    </div>
+                    <h3>Comptabilite</h3>
+                    <p>Gestion comptable SYSCOHADA</p>
+                    <ul class="features list-unstyled">
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Ecritures comptables</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Budget & Tresorerie</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Rapports bailleurs</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Immobilisations</li>
+                    </ul>
+                    <div class="btn btn-compta btn-enter">
+                        Ouvrir <i class="bi bi-arrow-right ms-1"></i>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if is_se %}
+            <div class="col-md-6">
+                <a href="{{ se_url }}/se/" class="app-card">
+                    <div class="icon-wrapper icon-se">
+                        <i class="bi bi-clipboard-data"></i>
+                    </div>
+                    <h3>Suivi & Evaluation</h3>
+                    <p>Pilotage des projets et indicateurs</p>
+                    <ul class="features list-unstyled">
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Cadres logiques</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Activites & Indicateurs</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Documents & Mediatheque</li>
+                        <li><i class="bi bi-check2 me-1 text-muted"></i>Taches (Kanban)</li>
+                    </ul>
+                    <div class="btn btn-se btn-enter">
+                        Ouvrir <i class="bi bi-arrow-right ms-1"></i>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="portal-footer">
+        <a href="{{ url_for('logout') }}" class="text-decoration-none">
+            <i class="bi bi-box-arrow-left me-1"></i>Se deconnecter
+        </a>
+        <br><br>
+        <small>CREATES GIE - Centre de Recherche-Action sur les Transformations Ecologiques et Sociales</small>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
